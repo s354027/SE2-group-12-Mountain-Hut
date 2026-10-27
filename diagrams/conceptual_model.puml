@@ -1,0 +1,66 @@
+@startuml conceptual_model
+skinparam classAttributeIconSize 0
+
+class User {
+}
+
+class Hiker {
+  + firstName
+  + lastName
+  + email
+  + phone
+}
+
+class Employee {
+  + firstName
+  + lastName
+}
+
+class Warden {
+}
+
+class Slot {
+  + date
+  + startTime
+  + duration
+  + totalCapacity
+  + bookedSeats
+  + remainingSeats
+  + status
+}
+
+class Menu {
+  + price
+  + description
+}
+
+class Table {
+  + tableNumber
+  + seats
+}
+
+class Booking {
+  + date
+  + time
+  + numberOfPeople
+  + status
+  + allergyFlag
+  + allergyDescription
+}
+
+User <|-- Hiker
+User <|-- Employee
+Employee <|-- Warden
+
+Hiker "1" --> "*" Booking : places
+Booking "*" --> "1" Slot : booked for
+Booking "*" --> "*" Table : occupies
+
+Slot "1" -right-> "1..*" Menu : features
+Slot "*" --> "*" Table : utilizes
+
+Employee "1" --> "*" Menu : manages
+Employee "1" --> "*" Slot : manages
+Employee "1" --> "*" Booking : manages
+
+@enduml
