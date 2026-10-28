@@ -49,7 +49,5 @@ __pycache__/
 # Docker overrides
 compose.override.yaml
 
-# Mailpit data directory
-data/
 # Local SQLite database
 backend/data/
