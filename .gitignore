@@ -48,3 +48,6 @@ __pycache__/
 
 # Docker overrides
 compose.override.yaml
+
+# Local SQLite database
+backend/data/
