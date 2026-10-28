@@ -1,0 +1,8 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, Arial, sans-serif; background: #f6f5f1; color: #1f2933; }
+.navbar { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: #1f4d3a; color: #fff; }
+.navbar nav { display: flex; gap: 16px; flex: 1; }
+.navbar a { color: #fff; text-decoration: none; }
+.navbar a.active { text-decoration: underline; }
+.navbar button { cursor: pointer; }
+.content { max-width: 960px; margin: 0 auto; padding: 24px; }
