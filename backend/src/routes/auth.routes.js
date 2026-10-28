@@ -1,5 +1,6 @@
 import { Router } from 'express';
-import { createAuthController } from '../controllers/authController.js';
+import { requireAuth } from '../middleware/requireAuth.js';
+import { createAuthController, getMe } from '../controllers/authController.js';
 
 export function createAuthRouter({ User }) {
   const router = Router();
@@ -7,6 +8,8 @@ export function createAuthRouter({ User }) {
 
   router.post('/login', login);
   router.post('/logout', logout);
+  // Protected endpoint to retrieve the current session state
+  router.get('/me', requireAuth, getMe);
 
   return router;
 }

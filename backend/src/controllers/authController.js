@@ -33,6 +33,14 @@ export function createAuthController({ User }) {
       return res.status(204).send();
     });
   }
+  
+  // Returns the req.session.user object if present.
+  function getMe(req, res) {
+    if (!req.session || !req.session.user) {
+      return res.status(401).json({ error: 'Unauthorized: Authentication required' });
+    }
+    return res.status(200).json(req.session.user);
+  }
 
-  return { login, logout };
+  return { login, logout, getMe };
 }
