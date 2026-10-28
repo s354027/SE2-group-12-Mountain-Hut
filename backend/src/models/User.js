@@ -1,12 +1,17 @@
 /* class with sequelize */
 import { DataTypes } from 'sequelize';
 
-export function defineUser(sequelize) { // password has to be defined during the Auth task
+export function defineUser(sequelize) {
   return sequelize.define('User', {
     id: {
       type: DataTypes.INTEGER,
       primaryKey: true,
       autoIncrement: true
+    },
+
+    passwordHash: {
+      type: DataTypes.STRING,
+      allowNull: false
     },
 
     firstName: {
