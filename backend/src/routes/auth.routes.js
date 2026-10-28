@@ -1,10 +1,15 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { getMe } from '../controllers/authController.js';
+import { createAuthController, getMe } from '../controllers/authController.js';
 
-const router = Router();
+export function createAuthRouter({ User }) {
+  const router = Router();
+  const { login, logout } = createAuthController({ User });
 
-// Protected endpoint to retrieve the current session state
-router.get('/me', requireAuth, getMe);
+  router.post('/login', login);
+  router.post('/logout', logout);
+  // Protected endpoint to retrieve the current session state
+  router.get('/me', requireAuth, getMe);
 
-export default router;
+  return router;
+}
