@@ -3,8 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import { createAuthRouter } from './routes/auth.routes.js';
-// TODO(MH-45): replace this with the real DB connection once it's merged
-import { db } from './testUtils/testDb.js';
+import { models } from './db/index.js';
 
 const app = express();
 
@@ -37,6 +36,6 @@ app.get('/health', (_req, res) => {
     });
 });
 
-app.use('/api/auth', createAuthRouter(db));
+app.use('/api/auth', createAuthRouter(models));
 
 export default app;

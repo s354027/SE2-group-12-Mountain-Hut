@@ -4,7 +4,7 @@ import { createAuthController } from '../controllers/authController.js';
 
 export function createAuthRouter({ User }) {
   const router = Router();
-  const { login, logout } = createAuthController({ User });
+  const { login, logout, getMe } = createAuthController({ User });
 
   router.post('/login', login);
   router.post('/logout', logout);
