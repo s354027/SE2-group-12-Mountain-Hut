@@ -1,0 +1,18 @@
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, Arial, sans-serif; background: #f6f5f1; color: #1f2933; }
+.navbar { display: flex; align-items: center; gap: 24px; padding: 12px 24px; background: #1f4d3a; color: #fff; }
+.navbar nav { display: flex; gap: 16px; flex: 1; }
+.navbar a { color: #fff; text-decoration: none; }
+.navbar a.active { text-decoration: underline; }
+.navbar button { cursor: pointer; }
+.content { max-width: 960px; margin: 0 auto; padding: 24px; }
+
+.auth-card { max-width: 360px; margin: 48px auto; padding: 32px; background: #fff; border-radius: 12px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08); }
+.auth-card h1 { margin-top: 0; font-size: 1.5rem; }
+.field { margin-bottom: 16px; }
+.field label { display: block; margin-bottom: 6px; font-size: 0.875rem; font-weight: 600; color: #3e4c59; }
+.field input { width: 100%; padding: 10px 12px; border: 1px solid #d3d9df; border-radius: 6px; font-size: 1rem; }
+.field input:focus { outline: none; border-color: #1f4d3a; box-shadow: 0 0 0 2px rgba(31, 77, 58, 0.15); }
+.btn-primary { width: 100%; padding: 10px 12px; background: #1f4d3a; color: #fff; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+.form-error { color: #b91c1c; background: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 8px 12px; margin-bottom: 16px; font-size: 0.875rem; }

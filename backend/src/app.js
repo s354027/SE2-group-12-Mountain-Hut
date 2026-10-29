@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
 import { createAuthRouter } from './routes/auth.routes.js';
+import availabilityRouter from './routes/availability.routes.js';
 import { models } from './db/index.js';
 
 const app = express();
@@ -37,5 +38,6 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/api/auth', createAuthRouter(models));
+app.use('/api/availability', availabilityRouter);
 
 export default app;

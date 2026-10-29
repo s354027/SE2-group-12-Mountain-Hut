@@ -28,6 +28,13 @@ export function defineSlot(sequelize) {
       }
     },
 
+    meal: {
+      type: DataTypes.STRING,
+      allowNull: false, // es. 'LUNCH', 'DINNER'
+      validate: {
+        isIn: [['LUNCH', 'DINNER']]
+      }
+    },
     totalCapacity: {
       type: DataTypes.INTEGER,
       allowNull: false,
@@ -39,7 +46,8 @@ export function defineSlot(sequelize) {
 
     status: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      defaultValue: 'OPEN'
     }
   }, {
     tableName: 'slots',
