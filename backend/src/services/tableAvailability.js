@@ -2,16 +2,33 @@ import { Op } from 'sequelize';
 import { models } from '../db/index.js';
 
 /**
- * Retrieve all available tables for a given time slot.
- * A table is occupied when linked to a PENDING or CONFIRMED reservation for the same slotId.
+ * Retrieves all available tables for a given time slot,
+ * calculating the remaining seats for each table (Table Sharing management - MH-01).
  * 
  * @param {number} slotId - Time slot ID
- * @returns {Promise<Array>} Available DiningTable instance arrays
+ * @returns {Promise<Array>} Array of table objects with residual capacity (.seats)
  */
 export async function findFreeTables(slotId) {
   const { DiningTable, Slot, Booking } = models;
 
-  // 1. Find active reservations (PENDING / CONFIRMED) for this specific slotId
+  // 1. Retrieve all tables associated with the specified slot
+  const slotWithTables = await Slot.findByPk(slotId, {
+    include: [
+      {
+        model: DiningTable,
+        as: 'tables',
+        through: { attributes: [] }
+      }
+    ]
+  });
+
+  if (!slotWithTables || !slotWithTables.tables || slotWithTables.tables.length === 0) {
+    return [];
+  }
+
+  const slotTables = slotWithTables.tables;
+
+  // 2. Find active bookings (PENDING / CONFIRMED) for this slot
   const activeBookings = await Booking.findAll({
     where: {
       slotId: slotId,
@@ -23,35 +40,51 @@ export async function findFreeTables(slotId) {
       {
         model: DiningTable,
         as: 'tables',
-        attributes: ['id'],
+        attributes: ['id', 'seats'],
         through: { attributes: [] }
       }
     ]
   });
 
-  // Extract the IDs of all currently occupied tables in this slot
-  const occupiedTableIds = activeBookings.flatMap(booking =>
-    booking.tables ? booking.tables.map(t => t.id) : []
-  );
+  // 3. Calculate the occupied seats for each table in the slot
+  const occupiedSeatsMap = {};
 
-  // 2. Retrieve all tables configured for the slot excluding occupied ones
-  const freeTables = await DiningTable.findAll({
-    include: [
-      {
-        model: Slot,
-        as: 'slots',
-        where: { id: slotId },
-        attributes: [],
-        through: { attributes: [] },
-        required: true
-      }
-    ],
-    where: occupiedTableIds.length > 0 ? {
-      id: {
-        [Op.notIn]: occupiedTableIds
-      }
-    } : {}
-  });
+  for (const booking of activeBookings) {
+    if (!booking.tables || booking.tables.length === 0) continue;
 
-  return freeTables;
+    let remainingPeople = booking.numberOfPeople;
+
+    // Distributes booking customers on assigned tables
+    for (const table of booking.tables) {
+      const currentOccupied = occupiedSeatsMap[table.id] || 0;
+      const tableCapacity = table.seats;
+      const tableRemainingCapacity = Math.max(0, tableCapacity - currentOccupied);
+
+      const seatsTakenByBooking = Math.min(remainingPeople, tableRemainingCapacity);
+      occupiedSeatsMap[table.id] = currentOccupied + seatsTakenByBooking;
+      remainingPeople -= seatsTakenByBooking;
+
+      if (remainingPeople <= 0) break;
+    }
+  }
+
+  // 4. Map the slot tables with the remaining capacity (Table Sharing)
+  const availableTables = slotTables
+    .map(table => {
+      const rawTable = table.get({ plain: true });
+      const occupiedSeats = occupiedSeatsMap[rawTable.id] || 0;
+      const freeSeats = Math.max(0, rawTable.seats - occupiedSeats);
+
+      return {
+        id: rawTable.id,
+        tableNumber: rawTable.tableNumber,
+        totalSeats: rawTable.seats,
+        occupiedSeats: occupiedSeats,
+        seats: freeSeats,          // Residual free seats (used by partySplit)
+        availableSeats: freeSeats
+      };
+    })
+    .filter(table => table.seats > 0); // Consider only tables with at least 1 free seat
+
+  return availableTables;
 }
