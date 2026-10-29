@@ -58,8 +58,8 @@ export const verifyTransporter = async () => {
  * @param {string} date The slot date, in the format "DD/MM/YYYY".
  * @param {string} slotStart The slot start time, in the format "HH:MM".
  * @param {string} slotEnd The slot end time, in the format "HH:MM".
- * @param {Array<number>} tableNumbers The table numbers reserved.
  * @param {number} partySize The number of guests in the reservation.
+ * @param {string|null} partyRequirements Any requirements provided for the party.
  * @returns {Promise<boolean>} Returns true if the email was sent successfully, false otherwise.
  */
 export const sendBookingConfirmation = async (
@@ -69,8 +69,8 @@ export const sendBookingConfirmation = async (
   date,
   slotStart,
   slotEnd,
-  tableNumbers,
   partySize,
+  partyRequirements = null,
 ) => {
   if (typeof to !== "string" || !to.trim()) {
     throw new TypeError("to must be a non-empty email address");
@@ -81,26 +81,29 @@ export const sendBookingConfirmation = async (
   if (!Number.isInteger(reservationId)) {
     throw new TypeError("reservationId must be an integer");
   }
-  if (!Array.isArray(tableNumbers)) {
-    throw new TypeError("tableNumbers must be an array");
-  }
   if (!Number.isInteger(partySize) || partySize < 1) {
     throw new TypeError("partySize must be a positive integer");
   }
+  if (
+    partyRequirements !== null &&
+    typeof partyRequirements !== "string"
+  ) {
+    throw new TypeError("partyRequirements must be a string or null");
+  }
 
-  const subject = "Booking Confirmation";
+  const subject = `Booking Confirmation #${reservationId}`;
 
   const html = `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 28px auto 0; padding: 28px;">
     <h1 style="color: #1a3a2a; margin-top: 0;">Your Reservation Is Confirmed! 🥳</h1>
     <p>Dear ${username},</p>
-    <p>We are pleased to confirm your reservation. Here are all the details of your booking:</p>
+    <p>We are pleased to confirm your reservation. Here are the details of your booking:</p>
   
-    <div style="font-size: 14px; font-weight: bold; color: #1a3a2a; margin-bottom: 8px; width: 100%; max-width: 340px;">
-      Reservation ID: ${reservationId}
+    <div style="font-size: 14px; font-weight: bold; margin-bottom: 12px; width: 100%; max-width: 340px;">
+      Booking reference: <span style="font-size: 16px;">#${reservationId}</span>
     </div>
   
-    <div style="border: 1px solid #e2e8e4; border-radius: 10px; padding: 15px; margin: 0 0 24px 0; width: 100%; max-width: 340px; box-sizing: border-box;">
+    <div style="border: 1px solid #e2e8e4; border-radius: 10px; padding: 15px; margin: 0 0 24px 0; width: 100%; max-width: 340px;">
     
       <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 12px;">
         <tr>
@@ -123,21 +126,7 @@ export const sendBookingConfirmation = async (
           </td>
           <td style="vertical-align: middle; padding-left: 10px;">
             <div style="font-size: 11px; text-transform: capitalize; color: #6b7c73; font-weight: bold;">Time</div>
-            <div style="font-size: 15px; color: #2c3e35; font-weight: bold;">${slotStart}-${slotEnd}</div>
-          </td>
-        </tr>
-      </table>
-    
-      <hr style="border: none; border-top: 1px solid #e2e8e4; margin: 10px 0;">
-      
-      <table role="presentation" style="width: 100%; border-collapse: collapse; margin-bottom: 12px; margin-top: 12px;">
-        <tr>
-          <td style="width: 40px; vertical-align: middle;">
-            <div style="background-color: #f0f0f0; width: 34px; height: 34px; border-radius: 6px; text-align: center; line-height: 34px; font-size: 18px;">🍽️</div>
-          </td>
-          <td style="vertical-align: middle; padding-left: 10px;">
-            <div style="font-size: 11px; text-transform: capitalize; color: #6b7c73; font-weight: bold;">Table</div>
-            <div style="font-size: 15px; color: #2c3e35; font-weight: bold;">${tableNumbers.join(", ")}</div>
+            <div style="font-size: 15px; color: #2c3e35; font-weight: bold;">${slotStart} – ${slotEnd}</div>
           </td>
         </tr>
       </table>
@@ -150,8 +139,22 @@ export const sendBookingConfirmation = async (
             <div style="background-color: #f0f0f0; width: 34px; height: 34px; border-radius: 6px; text-align: center; line-height: 34px; font-size: 18px;">👥</div>
           </td>
           <td style="vertical-align: middle; padding-left: 10px;">
-            <div style="font-size: 11px; text-transform: capitalize; color: #6b7c73; font-weight: bold;">Number of guests</div>
-            <div style="font-size: 15px; color: #2c3e35; font-weight: bold;">${partySize}</div>
+            <div style="font-size: 11px; text-transform: capitalize; color: #6b7c73; font-weight: bold;">Party size</div>
+            <div style="font-size: 15px; color: #2c3e35; font-weight: bold;">${partySize} people</div>
+          </td>
+        </tr>
+      </table>
+
+      <hr style="border: none; border-top: 1px solid #e2e8e4; margin: 10px 0;">
+
+      <table role="presentation" style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+        <tr>
+          <td style="width: 40px; vertical-align: middle;">
+            <div style="background-color: #f0f0f0; width: 34px; height: 34px; border-radius: 6px; text-align: center; line-height: 34px; font-size: 18px;">📝</div>
+          </td>
+          <td style="vertical-align: middle; padding-left: 10px;">
+            <div style="font-size: 11px; text-transform: capitalize; color: #6b7c73; font-weight: bold;">Party requirements</div>
+            <div style="font-size: 14px; color: #2c3e35; font-weight: bold;">${partyRequirements?.trim() || "None specified"}</div>
           </td>
         </tr>
       </table>

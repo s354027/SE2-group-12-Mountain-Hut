@@ -27,13 +27,12 @@ function addMinutesToTime(time, minutesToAdd) {
  * @returns {Promise<boolean>} true if the email was sent, false if it was skipped (e.g. no email on file)
  */
 export async function notifyBookingConfirmed(bookingId) {
-  const { Booking, User, Slot, DiningTable } = models;
+  const { Booking, User, Slot } = models;
 
   const booking = await Booking.findByPk(bookingId, {
     include: [
       { model: User, as: 'hiker' },
-      { model: Slot, as: 'slot' },
-      { model: DiningTable, as: 'tables' }
+      { model: Slot, as: 'slot' }
     ]
   });
 
@@ -41,7 +40,7 @@ export async function notifyBookingConfirmed(bookingId) {
     throw new Error(`Booking ${bookingId} not found`);
   }
 
-  const { hiker, slot, tables } = booking;
+  const { hiker, slot } = booking;
 
   if (!hiker?.email) {
     console.warn(`Booking ${bookingId}: hiker has no email on file, confirmation email skipped`);
@@ -57,7 +56,7 @@ export async function notifyBookingConfirmed(bookingId) {
     formatDateForEmail(slot.date),
     slotStart,
     addMinutesToTime(slotStart, slot.duration),
-    tables.map((table) => table.tableNumber),
-    booking.numberOfPeople
+    booking.numberOfPeople,
+    booking.allergyFlag ? booking.allergyDescription : null
   );
 }
