@@ -16,8 +16,16 @@ vi.mock("../../src/db/index.js", () => ({
 import { findFreeTables } from "../../src/services/tableAvailability.js";
 
 function table(data) {
+  const { allocatedSeats, ...tableData } = data;
+
   return {
-    get: vi.fn(() => data),
+    ...tableData,
+
+    ...(allocatedSeats !== undefined && {
+      BookingTable: { allocatedSeats }
+    }),
+
+    get: vi.fn(() => tableData)
   };
 }
 
@@ -81,11 +89,11 @@ describe("findFreeTables", () => {
     findAll.mockResolvedValue([
       {
         numberOfPeople: 4,
-        tables: [{ id: 1, seats: 4 }],
+        tables: [{ id: 1, seats: 4, BookingTable: { allocatedSeats: 4 } }],
       },
       {
         numberOfPeople: 3,
-        tables: [{ id: 2, seats: 6 }],
+        tables: [{ id: 2, seats: 6, BookingTable: { allocatedSeats: 3 } }],
       },
     ]);
 
@@ -112,8 +120,8 @@ describe("findFreeTables", () => {
       {
         numberOfPeople: 7,
         tables: [
-          { id: 1, seats: 4 },
-          { id: 2, seats: 6 },
+          { id: 1, seats: 4, BookingTable: { allocatedSeats: 4 } },
+          { id: 2, seats: 6, BookingTable: { allocatedSeats: 3 } },
         ],
       },
     ]);
@@ -175,11 +183,11 @@ describe("findFreeTables", () => {
     findAll.mockResolvedValue([
       {
         numberOfPeople: 4,
-        tables: [{ id: 1, seats: 4 }],
+        tables: [{ id: 1, seats: 4, BookingTable: { allocatedSeats: 4 } }],
       },
       {
         numberOfPeople: 6,
-        tables: [{ id: 2, seats: 6 }],
+        tables: [{ id: 2, seats: 6, BookingTable: { allocatedSeats: 6 } }],
       },
     ]);
 

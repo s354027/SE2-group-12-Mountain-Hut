@@ -13,6 +13,15 @@ export function defineBookingTable(sequelize) {
       type: DataTypes.INTEGER,
       primaryKey: true,
       allowNull: false
+    },
+
+    allocatedSeats: { // used for assigning split party
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      validate: {
+        isInt: true,
+        min: 1
+      }
     }
   }, {
     tableName: 'booking_tables',

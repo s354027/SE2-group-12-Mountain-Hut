@@ -8,7 +8,7 @@ import { models } from '../db/index.js';
  * @param {number} slotId - Time slot ID
  * @returns {Promise<Array>} Array of table objects with residual capacity (.seats)
  */
-export async function findFreeTables(slotId) {
+export async function findFreeTables(slotId, { transaction } = {}) {
   const { DiningTable, Slot, Booking } = models;
 
   // 1. Retrieve all tables associated with the specified slot
@@ -19,7 +19,8 @@ export async function findFreeTables(slotId) {
         as: 'tables',
         through: { attributes: [] }
       }
-    ]
+    ],
+    transaction
   });
 
   if (!slotWithTables || !slotWithTables.tables || slotWithTables.tables.length === 0) {
@@ -41,30 +42,25 @@ export async function findFreeTables(slotId) {
         model: DiningTable,
         as: 'tables',
         attributes: ['id', 'seats'],
-        through: { attributes: [] }
+        through: { attributes: ['allocatedSeats'] }
       }
-    ]
+    ],
+    transaction
   });
 
   // 3. Calculate the occupied seats for each table in the slot
   const occupiedSeatsMap = {};
 
   for (const booking of activeBookings) {
-    if (!booking.tables || booking.tables.length === 0) continue;
-
-    let remainingPeople = booking.numberOfPeople;
-
-    // Distributes booking customers on assigned tables
     for (const table of booking.tables) {
-      const currentOccupied = occupiedSeatsMap[table.id] || 0;
-      const tableCapacity = table.seats;
-      const tableRemainingCapacity = Math.max(0, tableCapacity - currentOccupied);
+      const seats = table.BookingTable?.allocatedSeats;
 
-      const seatsTakenByBooking = Math.min(remainingPeople, tableRemainingCapacity);
-      occupiedSeatsMap[table.id] = currentOccupied + seatsTakenByBooking;
-      remainingPeople -= seatsTakenByBooking;
+      if (!Number.isInteger(seats) || seats < 1) {
+        throw new Error('Invalid booking table allocation');
+      }
 
-      if (remainingPeople <= 0) break;
+      occupiedSeatsMap[table.id] =
+        (occupiedSeatsMap[table.id] ?? 0) + seats;
     }
   }
 

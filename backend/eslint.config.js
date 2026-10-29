@@ -4,7 +4,7 @@ import globals from 'globals';
 export default [
   js.configs.recommended,
   {
-    files: ['src/**/*.js'],
+    files: ['**/*.js'],
     languageOptions: {
       globals: globals.node
     },
