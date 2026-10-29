@@ -4,6 +4,7 @@ import { useAuth } from '../auth/AuthContext.jsx';
 export default function Layout() {
   const { user, logout } = useAuth();
   const isStaff = user && ['EMPLOYEE', 'WARDEN'].includes(user.role);
+  const isWarden = user && user.role === 'WARDEN';
 
   return (
     <>
@@ -14,12 +15,16 @@ export default function Layout() {
           <NavLink to="/search">Availability</NavLink>
           {user?.role === 'HIKER' && <NavLink to="/booking">Book a table</NavLink>}
           {isStaff && <NavLink to="/staff/slots">Slots</NavLink>}
+          {isWarden && <NavLink to="/admin/staff/new">New Staff</NavLink>}
         </nav>
         <div>
           {user ? (
             <button onClick={logout}>Logout</button>
           ) : (
-            <NavLink to="/login">Login</NavLink>
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <NavLink to="/login">Login</NavLink>
+              <NavLink to="/register">Register</NavLink>
+            </div>
           )}
         </div>
       </header>
