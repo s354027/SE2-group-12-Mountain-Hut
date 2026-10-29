@@ -3,6 +3,8 @@ import Layout from './components/Layout.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import Home from './pages/Home.jsx';
 import Login from './pages/Login.jsx';
+import Register from './pages/Register.jsx';
+import StaffRegister from './pages/StaffRegister.jsx';
 import Search from './pages/Search.jsx';
 import Booking from './pages/Booking.jsx';
 import StaffSlots from './pages/StaffSlots.jsx';
@@ -16,6 +18,7 @@ export default function App() {
         {/* public */}
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/search" element={<Search />} />
 
         {/* hiker only */}
@@ -26,6 +29,11 @@ export default function App() {
         {/* hut staff only */}
         <Route element={<ProtectedRoute roles={['EMPLOYEE', 'WARDEN']} />}>
           <Route path="/staff/slots" element={<StaffSlots />} />
+        </Route>
+
+        {/* warden only */}
+        <Route element={<ProtectedRoute roles={['WARDEN']} />}>
+          <Route path="/admin/staff/new" element={<StaffRegister />} />
         </Route>
 
         <Route path="*" element={<NotFound />} />

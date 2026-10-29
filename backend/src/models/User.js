@@ -37,7 +37,14 @@ export function defineUser(sequelize) {
       type: DataTypes.STRING,
       allowNull: true
     },
-
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true
+    },
+    emergencyContact: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
     role: {
       type: DataTypes.STRING,
       allowNull: false,
