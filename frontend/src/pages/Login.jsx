@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../auth/AuthContext.jsx';
 
 export default function Login() {
@@ -57,6 +57,9 @@ export default function Login() {
           {submitting ? 'Logging in...' : 'Login'}
         </button>
       </form>
+      <p style={{ marginTop: '16px', fontSize: '0.875rem', textAlign: 'center' }}>
+        Don't have an account? <Link to="/register">Sign up here</Link>
+      </p>
     </section>
   );
 }
