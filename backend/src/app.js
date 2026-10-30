@@ -5,6 +5,7 @@ import session from 'express-session';
 import { createAuthRouter } from './routes/auth.routes.js';
 import { createAdminRouter } from './routes/admin.routes.js';
 import availabilityRouter from './routes/availability.routes.js';
+import { createSlotRouter } from './routes/slot.routes.js';
 import { models } from './db/index.js';
 
 const app = express();
@@ -41,5 +42,6 @@ app.get('/health', (_req, res) => {
 app.use('/api/auth', createAuthRouter(models));
 app.use('/api/admin', createAdminRouter(models));
 app.use('/api/availability', availabilityRouter);
+app.use('/api/slots', createSlotRouter(models));
 
 export default app;
