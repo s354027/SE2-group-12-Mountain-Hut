@@ -5,12 +5,14 @@ import { sequelize } from './db/index.js';
 const PORT = Number(process.env.PORT) || 3000;
 const HOST = process.env.HOST || '127.0.0.1'; //for docker set: HOST=0.0.0.0 
 
-verifyTransporter(); // Verify the email transporter before starting the server
 async function startServer() {
     try {
         // Verify database connection
         await sequelize.authenticate();
         console.log('Database connection established.');
+        
+        // Verify email transporter
+        verifyTransporter();
 
         // Start HTTP server
         app.listen(PORT, HOST, () => {
