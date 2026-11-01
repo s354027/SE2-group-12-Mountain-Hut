@@ -9,6 +9,7 @@ export default function StaffRegister() {
     lastName: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
     role: 'EMPLOYEE'
   });
@@ -26,6 +27,12 @@ export default function StaffRegister() {
     event.preventDefault();
     setError(null);
     setSuccess(null);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -36,6 +43,7 @@ export default function StaffRegister() {
         lastName: '',
         email: '',
         password: '',
+        confirmPassword: '',
         phone: '',
         role: 'EMPLOYEE'
       });
@@ -94,6 +102,19 @@ export default function StaffRegister() {
             type="password"
             minLength={6}
             value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="confirmPassword">Confirm Password *</label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            minLength={6}
+            value={formData.confirmPassword}
             onChange={handleChange}
             required
           />

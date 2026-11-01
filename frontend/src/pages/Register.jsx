@@ -11,6 +11,7 @@ export default function Register() {
     lastName: '',
     email: '',
     password: '',
+    confirmPassword: '',
     phone: '',
     notes: '',
     emergencyContact: ''
@@ -30,6 +31,12 @@ export default function Register() {
   async function handleSubmit(event) {
     event.preventDefault();
     setError(null);
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
     setSubmitting(true);
 
     try {
@@ -90,6 +97,19 @@ export default function Register() {
             type="password"
             minLength={6}
             value={formData.password}
+            onChange={handleChange}
+            required
+          />
+        </div>
+
+        <div className="field">
+          <label htmlFor="confirmPassword">Confirm Password *</label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            minLength={6}
+            value={formData.confirmPassword}
             onChange={handleChange}
             required
           />
