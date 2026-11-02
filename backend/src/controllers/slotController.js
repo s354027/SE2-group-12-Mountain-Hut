@@ -3,7 +3,7 @@ import { Op } from 'sequelize';
 export function createSlotController({ Slot, DiningTable, Booking }) {
   /**
    * GET /api/slots
-   * Reads the list of time slots (filterable by query param 'data' and 'meal').
+   * Reads the list of time slots (filterable by query param 'date' and 'meal').
    * Includes the list of tables assigned to each slot.
    */
   async function getSlots(req, res) {
@@ -73,11 +73,10 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
 
   /**
    * POST /api/slots
-   * Create a new time slot and possibly assign tables (tableIds).
+   * Create a new time slot and possibly assign tables (tableIds or sourceSlotId for MH-35).
    */
   async function createSlot(req, res) {
-    const { date, startTime, duration, meal, totalCapacity, status, tableIds } = req.body ?? {};
-
+    const { date, startTime, duration, meal, totalCapacity, status, tableIds, sourceSlotId } = req.body ?? {};
     if (!date || !startTime || !duration || !meal) {
       return res.status(400).json({
         error: 'date, startTime, duration, and meal are required fields'
@@ -98,8 +97,19 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
       let tables = [];
       let capacity = totalCapacity ? Number(totalCapacity) : 0;
 
-      // If tables are provided, check their existence and calculate capacity
-      if (Array.isArray(tableIds) && tableIds.length > 0) {
+      // MH-35: If sourceSlotId is specified, retrieve the table list from the source slot
+      if (sourceSlotId) {
+        const sourceSlot = await Slot.findByPk(sourceSlotId, {
+          include: [{ model: DiningTable, as: 'tables' }]
+        });
+        if (!sourceSlot) {
+          return res.status(400).json({ error: 'Source slot not found' });
+        }
+        tables = sourceSlot.tables || [];
+        if (tables.length === 0) {
+          return res.status(400).json({ error: 'Selected source slot has no tables assigned' });
+        }
+      } else if (Array.isArray(tableIds) && tableIds.length > 0) {
         tables = await DiningTable.findAll({
           where: { id: { [Op.in]: tableIds } }
         });
@@ -107,10 +117,10 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
         if (tables.length !== tableIds.length) {
           return res.status(400).json({ error: 'One or more tableIds are invalid' });
         }
+      }
 
-        if (!totalCapacity) {
-          capacity = tables.reduce((sum, t) => sum + t.seats, 0);
-        }
+      if (!totalCapacity && tables.length > 0) {
+        capacity = tables.reduce((sum, t) => sum + t.seats, 0);
       }
 
       if (capacity <= 0) {
@@ -155,7 +165,7 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
 
   /**
    * PUT /api/slots/:id
-   * Update an existing slot (times, duration, meal, status, and/or the list of associated tables).
+   * Update an existing slot.
    */
   async function updateSlot(req, res) {
     const { id } = req.params;
@@ -198,12 +208,10 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
         }
 
         await slot.setTables(tables);
-
-        // If totalCapacity is not specified in the body, recalculate from the sum of the table seats
-        if (totalCapacity !== undefined) {
-          updateData.totalCapacity = Number(totalCapacity);
-        } else {
+        if (totalCapacity === undefined) {
           updateData.totalCapacity = tables.reduce((sum, t) => sum + t.seats, 0);
+        } else {
+          updateData.totalCapacity = Number(totalCapacity);
         }
       } else if (totalCapacity !== undefined) {
         updateData.totalCapacity = Number(totalCapacity);
@@ -265,11 +273,75 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
     }
   }
 
+  /**
+   * POST /api/slots/:id/copy-tables
+   * Task MH-35: Copy the table list (and update the capacity) from a previous slot (sourceSlotId)
+   */
+  async function copyTablesFromSlot(req, res) {
+    const { id } = req.params;
+    const { sourceSlotId } = req.body ?? {};
+
+    if (!sourceSlotId) {
+      return res.status(400).json({ error: 'sourceSlotId is required' });
+    }
+
+    try {
+      const targetSlot = await Slot.findByPk(id);
+      if (!targetSlot) {
+        return res.status(404).json({ error: 'Target slot not found' });
+      }
+
+      const sourceSlot = await Slot.findByPk(sourceSlotId, {
+        include: [
+          {
+            model: DiningTable,
+            as: 'tables',
+            attributes: ['id', 'tableNumber', 'seats'],
+            through: { attributes: [] }
+          }
+        ]
+      });
+
+      if (!sourceSlot) {
+        return res.status(404).json({ error: 'Source slot not found' });
+      }
+
+      const sourceTables = sourceSlot.tables || [];
+      if (sourceTables.length === 0) {
+        return res.status(400).json({ error: 'Source slot has no assigned tables to copy' });
+      }
+
+      // Associate copied tables with the destination slot
+      await targetSlot.setTables(sourceTables);
+
+      // Recalculate total capacity based on the sum of copied table seats
+      const newCapacity = sourceTables.reduce((sum, t) => sum + t.seats, 0);
+      await targetSlot.update({ totalCapacity: newCapacity });
+
+      const updatedSlot = await Slot.findByPk(targetSlot.id, {
+        include: [
+          {
+            model: DiningTable,
+            as: 'tables',
+            attributes: ['id', 'tableNumber', 'seats'],
+            through: { attributes: [] }
+          }
+        ]
+      });
+
+      return res.status(200).json(updatedSlot);
+    } catch (err) {
+      console.error('Error copying tables from slot:', err);
+      return res.status(500).json({ error: 'Failed to copy tables from slot' });
+    }
+  }
+
   return {
     getSlots,
     getSlotById,
     createSlot,
     updateSlot,
-    deleteSlot
+    deleteSlot,
+    copyTablesFromSlot
   };
 }
