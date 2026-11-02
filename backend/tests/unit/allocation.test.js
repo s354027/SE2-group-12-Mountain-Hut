@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findOne } = vi.hoisted(() => ({
-  findOne: vi.fn(),
+const { findAll } = vi.hoisted(() => ({
+  findAll: vi.fn(),
 }));
 
 const { findFreeTables } = vi.hoisted(() => ({
@@ -14,7 +14,7 @@ const { splitParty } = vi.hoisted(() => ({
 
 vi.mock("../../src/db/index.js", () => ({
   models: {
-    Slot: { findOne },
+    Slot: { findAll },
   },
 }));
 
@@ -33,12 +33,26 @@ describe("allocateTables", () => {
     vi.clearAllMocks();
   });
 
-  it("returns unavailable when no slot matches the requested date and time", async () => {
-    findOne.mockResolvedValue(null);
+  it("returns unavailable when there are no open slots for the date", async () => {
+    findAll.mockResolvedValue([]);
 
     await expect(allocateTables("2026-10-30", "19:00:00", 4)).resolves.toMatchObject({
       available: false,
-      reason: "No slot found for given date and time",
+      reason: "No service available for the selected date",
+      partySize: 4,
+      tables: [],
+      breakdown: null,
+    });
+  });
+
+  it("returns unavailable when the requested time does not fall within any open slot", async () => {
+    findAll.mockResolvedValue([
+      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+    ]);
+
+    await expect(allocateTables("2026-10-30", "12:00:00", 4)).resolves.toMatchObject({
+      available: false,
+      reason: "The entered time does not fall within any service slot",
       partySize: 4,
       tables: [],
       breakdown: null,
@@ -46,16 +60,14 @@ describe("allocateTables", () => {
   });
 
   it("returns unavailable when the slot has no free tables", async () => {
-    findOne.mockResolvedValue({
-      id: 10,
-      date: "2026-10-30",
-      startTime: "19:00:00",
-    });
+    findAll.mockResolvedValue([
+      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+    ]);
     findFreeTables.mockResolvedValue([]);
 
     await expect(allocateTables("2026-10-30", "19:00:00", 4)).resolves.toMatchObject({
       available: false,
-      reason: "No available tables in this time slot",
+      reason: "No table available for the slot of the 19:00",
       slotId: 10,
       partySize: 4,
       tables: [],
@@ -69,11 +81,9 @@ describe("allocateTables", () => {
       { id: 1, tableNumber: 4, seats: 4 },
       { id: 2, tableNumber: 6, seats: 2 },
     ];
-    findOne.mockResolvedValue({
-      id: 10,
-      date: "2026-10-30",
-      startTime: "19:00:00",
-    });
+    findAll.mockResolvedValue([
+      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+    ]);
     findFreeTables.mockResolvedValue(tables);
     splitParty.mockReturnValue([
       { ...tables[0], allocatedSeats: 4 },
@@ -85,29 +95,28 @@ describe("allocateTables", () => {
       slotId: 10,
       date: "2026-10-30",
       startTime: "19:00:00",
+      meal: "DINNER",
       partySize: 6,
       tables: [
         { id: 1, tableNumber: 4, seats: 4, allocatedSeats: 4 },
         { id: 2, tableNumber: 6, seats: 2, allocatedSeats: 2 },
       ],
       breakdown: "4 + 2 seats",
-      summary: "Party of 6 available (4 + 2 seats)",
+      summary: "Available seat in the slot of the 19:00 (4 + 2 seats)",
     });
     expect(splitParty).toHaveBeenCalledWith(6, tables);
   });
 
   it("returns unavailable when the party cannot be allocated", async () => {
-    findOne.mockResolvedValue({
-      id: 10,
-      date: "2026-10-30",
-      startTime: "19:00:00",
-    });
+    findAll.mockResolvedValue([
+      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+    ]);
     findFreeTables.mockResolvedValue([{ id: 1, seats: 4 }]);
     splitParty.mockReturnValue(null);
 
     await expect(allocateTables("2026-10-30", "19:00:00", 6)).resolves.toMatchObject({
       available: false,
-      reason: "Insufficient seats or valid table arrangement not possible",
+      reason: "Insufficient places for slot of 19:00",
       slotId: 10,
       partySize: 6,
       tables: [],
