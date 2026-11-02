@@ -5,7 +5,7 @@ import { createSlotController } from '../controllers/slotController.js';
 
 export function createSlotRouter({ Slot, DiningTable, Booking }) {
   const router = Router();
-  const { getSlots, getSlotById, createSlot, updateSlot, deleteSlot } =
+  const { getSlots, getSlotById, createSlot, updateSlot, deleteSlot, copyTablesFromSlot } =
     createSlotController({ Slot, DiningTable, Booking });
 
   // All endpoints require authentication such as EMPLOYEE or WARDEN (MH-34)
@@ -16,6 +16,7 @@ export function createSlotRouter({ Slot, DiningTable, Booking }) {
   router.post('/', createSlot);
   router.put('/:id', updateSlot);
   router.delete('/:id', deleteSlot);
+  router.post('/:id/copy-tables', copyTablesFromSlot);
 
   return router;
 }
