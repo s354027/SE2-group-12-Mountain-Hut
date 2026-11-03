@@ -7,6 +7,7 @@ import Register from './pages/Register.jsx';
 import StaffRegister from './pages/StaffRegister.jsx';
 import Search from './pages/Search.jsx';
 import Booking from './pages/Booking.jsx';
+import BookingTest from './pages/BookingTest.jsx';
 import StaffSlots from './pages/StaffSlots.jsx';
 import NotFound from './pages/NotFound.jsx';
 
@@ -20,6 +21,8 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/search" element={<Search />} />
+        {import.meta.env.DEV && <Route path="/booking-test" element={<BookingTest />} />}
+        {import.meta.env.DEV && <Route path="/booking-test/form" element={<Booking />} />}
 
         {/* hiker only */}
         <Route element={<ProtectedRoute roles={['HIKER']} />}>
