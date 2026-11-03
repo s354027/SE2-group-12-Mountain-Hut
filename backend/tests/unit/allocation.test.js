@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { allocateTables } from "../../src/services/allocation.js";
 
 const { findAll } = vi.hoisted(() => ({
   findAll: vi.fn(),
@@ -26,8 +27,6 @@ vi.mock("../../src/services/partySplit.js", () => ({
   splitParty,
 }));
 
-import { allocateTables } from "../../src/services/allocation.js";
-
 describe("allocateTables", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -36,7 +35,9 @@ describe("allocateTables", () => {
   it("returns unavailable when there are no open slots for the date", async () => {
     findAll.mockResolvedValue([]);
 
-    await expect(allocateTables("2026-10-30", "19:00:00", 4)).resolves.toMatchObject({
+    await expect(
+      allocateTables("2026-10-30", "19:00:00", 4),
+    ).resolves.toMatchObject({
       available: false,
       reason: "No service available for the selected date",
       partySize: 4,
@@ -47,10 +48,18 @@ describe("allocateTables", () => {
 
   it("returns unavailable when the requested time does not fall within any open slot", async () => {
     findAll.mockResolvedValue([
-      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "19:00:00",
+        duration: 120,
+        meal: "DINNER",
+      },
     ]);
 
-    await expect(allocateTables("2026-10-30", "12:00:00", 4)).resolves.toMatchObject({
+    await expect(
+      allocateTables("2026-10-30", "12:00:00", 4),
+    ).resolves.toMatchObject({
       available: false,
       reason: "The entered time does not fall within any service slot",
       partySize: 4,
@@ -61,11 +70,19 @@ describe("allocateTables", () => {
 
   it("returns unavailable when the slot has no free tables", async () => {
     findAll.mockResolvedValue([
-      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "19:00:00",
+        duration: 120,
+        meal: "DINNER",
+      },
     ]);
     findFreeTables.mockResolvedValue([]);
 
-    await expect(allocateTables("2026-10-30", "19:00:00", 4)).resolves.toMatchObject({
+    await expect(
+      allocateTables("2026-10-30", "19:00:00", 4),
+    ).resolves.toMatchObject({
       available: false,
       reason: "No table available for the slot of the 19:00",
       slotId: 10,
@@ -82,7 +99,13 @@ describe("allocateTables", () => {
       { id: 2, tableNumber: 6, seats: 2 },
     ];
     findAll.mockResolvedValue([
-      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "19:00:00",
+        duration: 120,
+        meal: "DINNER",
+      },
     ]);
     findFreeTables.mockResolvedValue(tables);
     splitParty.mockReturnValue([
@@ -109,16 +132,50 @@ describe("allocateTables", () => {
 
   it("returns unavailable when the party cannot be allocated", async () => {
     findAll.mockResolvedValue([
-      { id: 10, date: "2026-10-30", startTime: "19:00:00", duration: 120, meal: "DINNER" },
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "19:00:00",
+        duration: 120,
+        meal: "DINNER",
+      },
     ]);
     findFreeTables.mockResolvedValue([{ id: 1, seats: 4 }]);
     splitParty.mockReturnValue(null);
 
-    await expect(allocateTables("2026-10-30", "19:00:00", 6)).resolves.toMatchObject({
+    await expect(
+      allocateTables("2026-10-30", "19:00:00", 6),
+    ).resolves.toMatchObject({
       available: false,
       reason: "Insufficient places for slot of 19:00",
       slotId: 10,
       partySize: 6,
+      tables: [],
+      breakdown: null,
+    });
+  });
+
+  it("returns unavailable when the requested time is less than 20 minutes before the end of the slot", async () => {
+    findAll.mockResolvedValue([
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "19:00:00",
+        duration: 60,
+        meal: "DINNER",
+      },
+    ]);
+    findFreeTables.mockResolvedValue([{ id: 1, seats: 4 }]);
+    splitParty.mockReturnValue([{ id: 1, seats: 4, allocatedSeats: 4 }]);
+
+    await expect(
+      allocateTables("2026-10-30", "19:50:00", 4),
+    ).resolves.toMatchObject({
+      available: false,
+      reason:
+        "The requested time must be entered at least 20 minutes before the end of the slot",
+      slotId: 10,
+      partySize: 4,
       tables: [],
       breakdown: null,
     });
