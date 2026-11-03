@@ -17,6 +17,51 @@ export class BookingError extends Error {
  * @param {Object} data
  * @returns {Promise<Object>} Created booking details
  */
+
+/* in order to avoid concurrent bookings: */
+const MAX_BUSY_RETRIES = 4;
+const BASE_RETRY_DELAY_MS = 25;
+
+function isSqliteBusy(error) {
+    return (
+        error?.original?.code === 'SQLITE_BUSY' ||
+        error?.parent?.code === 'SQLITE_BUSY' ||
+        error?.code === 'SQLITE_BUSY'
+    );
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms)); // wait a delay before you can retry to book a table
+}
+
+async function runBookingTransaction(callback) {
+    for (let attempt = 0; attempt <= MAX_BUSY_RETRIES; attempt++) {
+        try {
+            return await sequelize.transaction(
+                { type: Transaction.TYPES.IMMEDIATE },
+                callback
+            );
+        } catch (error) {
+            if (!isSqliteBusy(error)) {
+                throw error;
+            }
+
+            if (attempt === MAX_BUSY_RETRIES) {
+                throw new BookingError(
+                    503,
+                    'Booking service temporarily busy'
+                );
+            }
+
+            const delayMs =
+                BASE_RETRY_DELAY_MS * (2 ** attempt);
+
+            await delay(delayMs);
+        }
+    }
+}
+
+
 export async function createBookingForHiker({
   hikerId,
   slotId,
@@ -44,8 +89,8 @@ export async function createBookingForHiker({
     }
 
     // All database operations belong to one transaction
-    return sequelize.transaction(
-        { type: Transaction.TYPES.IMMEDIATE }, async transaction => {
+    return runBookingTransaction(
+        async transaction => {
 
         // 1. Verify the hiker
         const hiker = await User.findByPk(hikerId, {
