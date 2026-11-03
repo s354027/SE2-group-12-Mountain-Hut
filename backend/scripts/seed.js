@@ -74,8 +74,11 @@ async function seed() {
         transaction
       });
 
-      if (!created && user.role !== userData.role) {
-        await user.update({ role: userData.role }, { transaction });
+      if (!created) {
+        await user.update({
+          passwordHash: await hashPassword(password),
+          role: userData.role
+        }, { transaction });
       }
     }
 
