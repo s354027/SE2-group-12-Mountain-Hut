@@ -1,0 +1,32 @@
+image: node:22
+
+stages:
+  - test
+
+cache:
+  key:
+    files:
+      - backend/package-lock.json
+      - frontend/package-lock.json
+  paths:
+    - backend/node_modules/
+    - frontend/node_modules/
+
+backend_tests:
+  stage: test
+  script:
+    - cd backend
+    - npm ci
+    - npm test
+  artifacts:
+    when: always
+    paths:
+      - backend/coverage/
+    expire_in: 1 week
+
+frontend_tests:
+  stage: test
+  script:
+    - cd frontend
+    - npm ci
+    - npm test
