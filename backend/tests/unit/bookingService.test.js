@@ -51,10 +51,16 @@ async function expectBookingError(promise, status, message) {
   await expect(promise).rejects.toMatchObject({ status, message });
 }
 
+beforeEach(() => {
+  vi.clearAllMocks();
+
+  transaction.mockReset();
+  transaction.mockImplementation(
+    (_options, callback) => callback({})
+  );
+});
+
 describe("createBookingForHiker", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
 
   it("rejects an invalid party size", async () => {
     await expectBookingError(
@@ -247,4 +253,93 @@ describe("createBookingForHiker", () => {
     );
     expect(create).not.toHaveBeenCalled();
   });
+});
+
+// TESTS MH-29: Concurren bookings
+describe("MH-29 concurrent booking transaction handling", () => {
+  //checks if SQLITE_BUSY starts a retry, as intended
+  it("retries the booking transaction when SQLite is busy", async () => {
+    const busyError = new Error("database is locked");
+    busyError.original = {
+      code: "SQLITE_BUSY"
+    };
+
+    transaction
+      .mockRejectedValueOnce(busyError)
+      .mockImplementationOnce(
+        (_options, callback) => callback({})
+      );
+
+    findByPkUser.mockResolvedValue({
+      role: "HIKER"
+    });
+
+    findByPkSlot.mockResolvedValue({
+      status: "OPEN",
+      totalCapacity: 10
+    });
+
+    sum.mockResolvedValue(0);
+
+    const tables = [
+      {
+        id: 1,
+        tableNumber: 1,
+        seats: 4,
+        allocatedSeats: 4
+      }
+    ];
+
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue(tables);
+
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 4,
+      status: "CONFIRMED"
+    });
+
+    bulkCreate.mockResolvedValue([]);
+
+    const result = await createBookingForHiker(validInput);
+
+    expect(result.id).toBe(99);
+
+    expect(transaction).toHaveBeenCalledTimes(2);
+  });
+
+  //checks that a generic error (not SQLITE-BUSY) doesn't trigger a retry
+  it("does not retry non-SQLite-busy errors", async () => {
+    const error = new Error("Unexpected database error");
+
+    transaction.mockRejectedValueOnce(error);
+
+    await expect(
+      createBookingForHiker(validInput)
+    ).rejects.toBe(error);
+
+    expect(transaction).toHaveBeenCalledTimes(1);
+  });
+
+  //checks that, after re-trying for "MAX_BUSY_RETRIES", an error is trown
+  it("returns 503 when SQLite remains busy after all retries", async () => {
+    const busyError = new Error("database is locked");
+    busyError.original = {
+      code: "SQLITE_BUSY"
+    };
+
+    transaction.mockRejectedValue(busyError);
+
+    await expect(
+      createBookingForHiker(validInput)
+    ).rejects.toMatchObject({
+      status: 503,
+      message: "Booking service temporarily busy"
+    });
+
+    expect(transaction).toHaveBeenCalledTimes(5); //5 because by default MAX_BUSY_RETRIES = 4
+  });
+  
 });
