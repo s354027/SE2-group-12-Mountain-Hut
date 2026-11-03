@@ -90,6 +90,7 @@ From the `backend/` directory, install dependencies and initialize the database:
 ```bash
 npm ci
 npm run db:migrate
+npm run db:seed
 ```
 
 The SQLite database is stored in `backend/data/mountain-hut.sqlite` by default. Its location can be overridden using the `DB_PATH` environment variable.
@@ -101,6 +102,7 @@ The SQLite database is stored in `backend/data/mountain-hut.sqlite` by default. 
 | `npm run db:migrate` | Apply all pending migrations |
 | `npm run db:status` | Show applied and pending migrations |
 | `npm run db:undo` | Revert the most recently applied migration |
+| `npm run db:seed` | Add sample tables, slots, and demo users for local development |
 | `npm run dev` | Start the backend in development mode |
 
 Migrations are tracked automatically in the `SequelizeMeta` table, preventing previously applied migrations from running again.
@@ -144,9 +146,21 @@ After pulling changes that include new migrations:
 ```bash
 npm ci
 npm run db:migrate
+npm run db:seed
 npm run dev
 ```
 
 Migrations must be applied before starting the backend whenever the database schema has changed.
+Run the seed command after migrations when local sample booking data is needed. It is safe to run repeatedly.
+
+The seed creates these demo accounts:
+
+| Role | Email | Password |
+|---|---|---|
+| Hiker | `hiker.demo@mountainhut.local` | `DemoHiker123` |
+| Employee | `employee.demo@mountainhut.local` | `DemoEmployee123` |
+| Warden | `warden.demo@mountainhut.local` | `DemoWarden123` |
+
+These credentials are for local demos only and must not be used in a deployed environment.
 
 The SQLite database file is excluded from Git. Migration files must be committed so that every developer can reproduce the same database structure.

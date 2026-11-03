@@ -13,7 +13,7 @@ export default function Layout() {
         <nav>
           <NavLink to="/">Home</NavLink>
           <NavLink to="/search">Availability</NavLink>
-          {user?.role === 'HIKER' && <NavLink to="/booking">Book a table</NavLink>}
+          {/*user?.role === 'HIKER' && <NavLink to="/booking">Book a table</NavLink>*/}
           {isStaff && <NavLink to="/staff/slots">Slots</NavLink>}
           {isWarden && <NavLink to="/admin/staff/new">New Staff</NavLink>}
         </nav>

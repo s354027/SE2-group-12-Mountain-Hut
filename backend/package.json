@@ -10,7 +10,8 @@
     "test": "vitest run --coverage",
     "db:migrate": "node scripts/migrate.js up",
     "db:status": "node scripts/migrate.js status",
-    "db:undo": "node scripts/migrate.js down"
+    "db:undo": "node scripts/migrate.js down",
+    "db:seed": "node scripts/seed.js"
   },
   "keywords": [],
   "author": "",
