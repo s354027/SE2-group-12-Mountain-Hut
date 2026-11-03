@@ -58,7 +58,8 @@ export function createAuthController({ User }) {
       return res.status(400).json({ error: 'Email and password are required' });
     }
 
-    const user = await User.findOne({ where: { email } });
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ where: { email: normalizedEmail } });
 
     if (!user || !(await verifyPassword(password, user.passwordHash))) {
       return res.status(401).json({ error: 'Invalid credentials' });
