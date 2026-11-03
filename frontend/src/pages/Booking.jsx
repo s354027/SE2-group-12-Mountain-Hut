@@ -57,7 +57,11 @@ export default function Booking() {
       setAllergyFlag(false);
       setAllergyDescription("");
     } catch (requestError) {
-      setError(requestError.message);
+      if (requestError.response?.status === 409) {
+        setError("Sorry, the selected table allocation is no longer available. Please check availability again.");
+      } else {
+        setError(requestError.message);
+      }
     } finally {
       setSubmitting(false);
     }
