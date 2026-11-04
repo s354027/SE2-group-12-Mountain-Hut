@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findByPkUser, findByPkSlot, sum, create, bulkCreate } = vi.hoisted(() => ({
+const { findByPkUser, findByPkSlot, findOne, sum, create, bulkCreate } = vi.hoisted(() => ({
   findByPkUser: vi.fn(),
   findByPkSlot: vi.fn(),
+  findOne: vi.fn(),
   sum: vi.fn(),
   create: vi.fn(),
   bulkCreate: vi.fn(),
@@ -25,7 +26,7 @@ vi.mock("../../src/db/index.js", () => ({
   models: {
     User: { findByPk: findByPkUser },
     Slot: { findByPk: findByPkSlot },
-    Booking: { sum, create },
+    Booking: { findOne, sum, create },
     BookingTable: { bulkCreate },
   },
 }));
@@ -46,6 +47,13 @@ const validInput = {
   numberOfPeople: 4,
 };
 
+const futureSlot = {
+  date: "2099-01-01",
+  startTime: "20:00:00",
+  status: "OPEN",
+  totalCapacity: 10
+};
+
 async function expectBookingError(promise, status, message) {
   await expect(promise).rejects.toBeInstanceOf(BookingError);
   await expect(promise).rejects.toMatchObject({ status, message });
@@ -58,6 +66,8 @@ beforeEach(() => {
   transaction.mockImplementation(
     (_options, callback) => callback({})
   );
+
+  findOne.mockResolvedValue(null); //by default: the hiker doesn't have a reservation
 });
 
 describe("createBookingForHiker", () => {
@@ -130,7 +140,7 @@ describe("createBookingForHiker", () => {
 
   it("rejects when the party exceeds the remaining slot capacity", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
-    findByPkSlot.mockResolvedValue({ status: "OPEN", totalCapacity: 10 });
+    findByPkSlot.mockResolvedValue(futureSlot);
     sum.mockResolvedValue(8);
 
     await expectBookingError(
@@ -142,7 +152,7 @@ describe("createBookingForHiker", () => {
 
   it("treats a null booked-seats sum (no existing bookings) as zero", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
-    findByPkSlot.mockResolvedValue({ status: "OPEN", totalCapacity: 4 });
+    findByPkSlot.mockResolvedValue({ ...futureSlot, totalCapacity: 4 });
     sum.mockResolvedValue(null);
     findFreeTables.mockResolvedValue([{ id: 1, tableNumber: 1, seats: 4 }]);
     splitParty.mockReturnValue([{ id: 1, tableNumber: 1, seats: 4, allocatedSeats: 4 }]);
@@ -156,7 +166,7 @@ describe("createBookingForHiker", () => {
 
   it("rejects when no table combination can seat the party", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
-    findByPkSlot.mockResolvedValue({ status: "OPEN", totalCapacity: 10 });
+    findByPkSlot.mockResolvedValue(futureSlot);
     sum.mockResolvedValue(0);
     findFreeTables.mockResolvedValue([]);
     splitParty.mockReturnValue(null);
@@ -171,7 +181,7 @@ describe("createBookingForHiker", () => {
 
   it("creates the booking and persists the allocated tables", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
-    findByPkSlot.mockResolvedValue({ status: "OPEN", totalCapacity: 10 });
+    findByPkSlot.mockResolvedValue(futureSlot);
     sum.mockResolvedValue(0);
     const tables = [
       { id: 1, tableNumber: 4, seats: 4, allocatedSeats: 4 },
@@ -213,7 +223,7 @@ describe("createBookingForHiker", () => {
 
   it("stores a trimmed allergy description when allergyFlag is true", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
-    findByPkSlot.mockResolvedValue({ status: "OPEN", totalCapacity: 10 });
+    findByPkSlot.mockResolvedValue(futureSlot);
     sum.mockResolvedValue(0);
     const tables = [{ id: 1, tableNumber: 4, seats: 4, allocatedSeats: 4 }];
     findFreeTables.mockResolvedValue(tables);
@@ -242,7 +252,7 @@ describe("createBookingForHiker", () => {
 
   it("rejects when the allocated seats do not add up to the party size", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
-    findByPkSlot.mockResolvedValue({ status: "OPEN", totalCapacity: 10 });
+    findByPkSlot.mockResolvedValue(futureSlot);
     sum.mockResolvedValue(0);
     const tables = [{ id: 1, tableNumber: 4, seats: 4, allocatedSeats: 3 }];
     findFreeTables.mockResolvedValue(tables);
@@ -251,6 +261,101 @@ describe("createBookingForHiker", () => {
     await expect(createBookingForHiker({ ...validInput, numberOfPeople: 4 })).rejects.toThrow(
       "Invalid table allocation",
     );
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("rejects a booking made less than 2 hours before the slot", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2030-06-10T18:30:00"));
+
+    findByPkUser.mockResolvedValue({ role: "HIKER" });
+
+    findByPkSlot.mockResolvedValue({
+      date: "2030-06-10",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10
+    });
+
+    await expectBookingError(
+      createBookingForHiker(validInput),
+      409,
+      "Booking deadline has passed"
+    );
+
+    expect(create).not.toHaveBeenCalled();
+
+    vi.useRealTimers();
+  });
+
+  it("allows a booking exactly 2 hours before the slot", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2030-06-10T18:00:00"));
+
+    findByPkUser.mockResolvedValue({ role: "HIKER" });
+
+    findByPkSlot.mockResolvedValue({
+      date: "2030-06-10",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10
+    });
+
+    findOne.mockResolvedValue(null);
+    sum.mockResolvedValue(0);
+
+    const tables = [
+      {
+        id: 1,
+        tableNumber: 1,
+        seats: 4,
+        allocatedSeats: 4
+      }
+    ];
+
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue(tables);
+
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 4,
+      status: "CONFIRMED"
+    });
+
+    bulkCreate.mockResolvedValue([]);
+
+    await expect(
+      createBookingForHiker(validInput)
+    ).resolves.toMatchObject({
+      id: 99
+    });
+
+    vi.useRealTimers();
+  });
+
+  it("rejects when the hiker already has an active booking for the slot", async () => {
+    findByPkUser.mockResolvedValue({
+      role: "HIKER"
+    });
+
+    findByPkSlot.mockResolvedValue(futureSlot);
+
+    findOne.mockResolvedValue({
+      id: 50,
+      hikerId: 1,
+      slotId: 10,
+      status: "CONFIRMED"
+    });
+
+    await expectBookingError(
+      createBookingForHiker(validInput),
+      409,
+      "Hiker already has a booking for this slot"
+    );
+
+    expect(sum).not.toHaveBeenCalled();
     expect(create).not.toHaveBeenCalled();
   });
 });
@@ -270,14 +375,9 @@ describe("MH-29 concurrent booking transaction handling", () => {
         (_options, callback) => callback({})
       );
 
-    findByPkUser.mockResolvedValue({
-      role: "HIKER"
-    });
+    findByPkUser.mockResolvedValue({role: "HIKER"});
 
-    findByPkSlot.mockResolvedValue({
-      status: "OPEN",
-      totalCapacity: 10
-    });
+    findByPkSlot.mockResolvedValue(futureSlot);
 
     sum.mockResolvedValue(0);
 
@@ -342,4 +442,5 @@ describe("MH-29 concurrent booking transaction handling", () => {
     expect(transaction).toHaveBeenCalledTimes(5); //5 because by default MAX_BUSY_RETRIES = 4
   });
   
+
 });
