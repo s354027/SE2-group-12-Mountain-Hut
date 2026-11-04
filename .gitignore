@@ -53,3 +53,6 @@ compose.override.yaml
 data/
 # Local SQLite database
 backend/data/
+
+# Playwright test results
+test-results/
