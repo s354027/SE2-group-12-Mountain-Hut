@@ -1,10 +1,12 @@
-// MH-36 - Define slot capacity (staff) (owner: Kimia)
-// TODO: replace this placeholder with the real page.
+import TablesManager from './staff/TablesManager.jsx';
+import SlotsManager from './staff/SlotsManager.jsx';
+
 export default function StaffSlots() {
   return (
     <section>
-      <h1>Define slot capacity (staff)</h1>
-      <p>Placeholder page (MH-36).</p>
+      <h1>Staff interface</h1>
+      <TablesManager />
+      <SlotsManager />
     </section>
   );
 }
