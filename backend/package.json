@@ -12,7 +12,8 @@
     "db:status": "node scripts/migrate.js status",
     "db:undo": "node scripts/migrate.js down",
     "db:seed": "node scripts/seed.js",
-    "e2e:prepare": "node scripts/prepare-e2e-db.js"
+    "e2e:prepare": "node scripts/prepare-e2e-db.js",
+    "e2e:reset-bookings": "node scripts/reset-e2e-bookings.js"
   },
   "keywords": [],
   "author": "",
