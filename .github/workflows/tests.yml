@@ -48,3 +48,55 @@ jobs:
 
       - run: npm ci
       - run: npm test
+  e2e-tests:
+    runs-on: ubuntu-latest
+    env:
+      DB_PATH: ${{ github.workspace }}/backend/data/e2e.sqlite
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            backend/package-lock.json
+            frontend/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: npm ci
+
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Start Mailpit
+        run: docker compose -f backend/docker-compose.yml up -d mailpit
+
+      - name: Prepare database
+        working-directory: backend
+        run: npm run e2e:prepare
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+
+      - name: Stop Mailpit
+        if: always()
+        run: docker compose -f backend/docker-compose.yml down
