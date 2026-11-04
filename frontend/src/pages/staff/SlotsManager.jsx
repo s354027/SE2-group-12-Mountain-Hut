@@ -153,7 +153,7 @@ export default function SlotsManager() {
                     {(slot.tables || []).map((t) => t.tableNumber).join(', ') || '-'}
                   </td>
                   <td style={{ padding: 8 }}>
-                    <button onClick={() => startEdit(slot)}>Edit</button>
+                    <button className="btn-edit" onClick={() => startEdit(slot)}>Edit</button>
                   </td>
                 </tr>
               ))}
@@ -198,7 +198,7 @@ export default function SlotsManager() {
           <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '10px 24px' }} disabled={saving}>
             {saving ? 'Saving...' : editingId === null ? 'Add slot' : 'Save changes'}
           </button>
-          {editingId !== null && <button type="button" onClick={cancelEdit} disabled={saving}>Cancel</button>}
+          {editingId !== null && <button type="button" className="btn-cancel" onClick={cancelEdit} disabled={saving}>Cancel</button>}
         </div>
       </form>
 
