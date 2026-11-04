@@ -11,7 +11,8 @@
     "db:migrate": "node scripts/migrate.js up",
     "db:status": "node scripts/migrate.js status",
     "db:undo": "node scripts/migrate.js down",
-    "db:seed": "node scripts/seed.js"
+    "db:seed": "node scripts/seed.js",
+    "e2e:prepare": "node scripts/prepare-e2e-db.js"
   },
   "keywords": [],
   "author": "",

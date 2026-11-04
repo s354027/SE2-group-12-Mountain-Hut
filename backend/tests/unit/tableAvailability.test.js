@@ -194,4 +194,21 @@ describe("findFreeTables", () => {
     await expect(findFreeTables(1)).resolves.toEqual([]);
     expect(findAll).toHaveBeenCalled();
   });
+
+  it('throws an error when a booking has an invalid allocatedSeats value', async () => {
+    findByPk.mockResolvedValue({
+      tables: [
+        table({ id: 1, tableNumber: 4, seats: 4 }),
+      ],
+    });
+    findAll.mockResolvedValue([
+      {
+        numberOfPeople: 4,
+        tables: [{ id: 1, seats: 4, BookingTable: { allocatedSeats: -1 } }],
+      },
+    ]);
+
+    await expect(findFreeTables(1)).rejects.toThrow('Invalid booking table allocation');
+    expect(findAll).toHaveBeenCalled();
+  });
 });
