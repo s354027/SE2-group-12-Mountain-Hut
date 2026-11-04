@@ -33,7 +33,9 @@ const tableDefinitions = [
   { tableNumber: 2, seats: 2 },
   { tableNumber: 3, seats: 4 },
   { tableNumber: 4, seats: 4 },
-  { tableNumber: 5, seats: 6 }
+  { tableNumber: 5, seats: 6 },
+  { tableNumber: 6, seats: 6 },
+  { tableNumber: 7, seats: 4 },
 ];
 
 const slotDefinitions = [
@@ -60,6 +62,9 @@ function getSeedDates(days) {
 async function seed() {
   await sequelize.authenticate();
 
+  /**
+   * Adds demo users, tables, and slots for the next seven days to the database.
+   */
   await sequelize.transaction(async transaction => {
     const { User, DiningTable, Slot } = models;
 
