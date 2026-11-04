@@ -79,12 +79,12 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Start Mailpit
-        run: docker compose -f backend/docker-compose.yml up -d mailpit
-
       - name: Prepare database
         working-directory: backend
         run: npm run e2e:prepare
+
+      - name: Start Mailpit
+        run: docker compose -f backend/docker-compose.yml up -d mailpit
 
       - name: Run E2E tests
         run: npm run test:e2e
