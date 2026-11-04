@@ -34,9 +34,17 @@ test("@email sends a booking confirmation email", async ({
     .getByRole("button", { name: "Confirm booking" })
     .click();
 
+  const bookingResponsePromise = page.waitForResponse(
+  response =>
+    response.url().includes("/api/bookings") &&
+    response.request().method() === "POST"
+  );
+
   await page
     .getByRole("button", { name: "Continue" })
     .click();
+
+  const bookingResponse = await bookingResponsePromise;
 
   await expect(
     page.getByText(
