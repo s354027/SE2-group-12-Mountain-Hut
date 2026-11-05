@@ -5,13 +5,13 @@ test("unauthenticated user cannot access the booking page", async ({ page }) => 
 
     await expect(page).toHaveURL("/login");
     await expect(page.getByLabel("Email")).toBeVisible();
-    await expect(page.getByLabel("Password")).toBeVisible();
+    await expect(page.getByLabel("Password", { exact: true })).toBeVisible();
 });
 
 test("hiker cannot start a booking without selected availability", async ({ page }) => {
     await page.goto("/login");
     await page.getByLabel("Email").fill("hiker.demo@mountainhut.local");
-    await page.getByLabel("Password").fill("DemoHiker123");
+    await page.getByLabel("Password", { exact: true }).fill("DemoHiker123");
     await page.getByRole("button", { name: "Login" }).click();
 
     await expect(page).toHaveURL("/");

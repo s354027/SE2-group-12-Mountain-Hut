@@ -6,7 +6,7 @@ test("hiker can login and logout", async ({ page }) => {
   await page.getByLabel("Email").fill(
     "hiker.demo@mountainhut.local",
   );
-  await page.getByLabel("Password").fill("DemoHiker123");
+  await page.getByLabel("Password", { exact: true }).fill("DemoHiker123");
 
   await page.getByRole("button", { name: "Login" }).click();
 
@@ -32,7 +32,7 @@ test("login with invalid credentials is rejected", async ({ page }) => {
     await page.goto("/login");
 
     await page.getByLabel("Email").fill("hiker.demo@mountainhut.local");
-    await page.getByLabel("Password").fill("WrongPassword");
+    await page.getByLabel("Password", { exact: true }).fill("WrongPassword");
 
     await page.getByRole("button", { name: "Login" }).click();
 
@@ -46,7 +46,7 @@ test("authenticated session survives page reload", async ({ page }) => {
 
     await page.getByLabel("Email").fill("hiker.demo@mountainhut.local");
 
-    await page.getByLabel("Password").fill("DemoHiker123");
+    await page.getByLabel("Password", { exact: true }).fill("DemoHiker123");
 
     await page.getByRole("button", { name: "Login" }).click();
 

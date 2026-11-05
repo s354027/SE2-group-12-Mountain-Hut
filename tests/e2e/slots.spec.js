@@ -5,7 +5,7 @@ async function loginAsWarden(page) {
 
     await page.getByLabel("Email").fill("warden.demo@mountainhut.local");
 
-    await page.getByLabel("Password").fill("DemoWarden123");
+    await page.getByLabel("Password", { exact: true }).fill("DemoWarden123");
 
     await page.getByRole("button", { name: "Login" }).click();
 
@@ -105,7 +105,7 @@ test("slot form rejects invalid capacity", async ({ page }) => {
 async function loginAsEmployee(page) {
   await page.goto("/login");
   await page.getByLabel("Email").fill("employee.demo@mountainhut.local");
-  await page.getByLabel("Password").fill("DemoEmployee123");
+  await page.getByLabel("Password", { exact: true }).fill("DemoEmployee123");
   await page.getByRole("button", { name: "Login" }).click();
   await expect(page).toHaveURL("/");
 }
