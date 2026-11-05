@@ -55,11 +55,27 @@ export default function SlotsManager() {
     }
   }
 
+  async function loadTables() {
+    try {
+      const updatedTables = await api.get('/tables');
+      setTables(updatedTables);
+      setTablesError('');
+    } catch (err) {
+      setTablesError(err.message || 'Could not load tables.');
+    }
+  }
+
   useEffect(() => {
     loadSlots();
-    api.get('/tables')
-      .then(setTables)
-      .catch((err) => setTablesError(err.message || 'Could not load tables.'));
+    loadTables();
+
+    function handleTablesChanged() {
+      loadTables();
+      loadSlots();
+    }
+
+    window.addEventListener('mountainhut:tables-changed', handleTablesChanged);
+    return () => window.removeEventListener('mountainhut:tables-changed', handleTablesChanged);
   }, []);
 
   function handleChange(event) {

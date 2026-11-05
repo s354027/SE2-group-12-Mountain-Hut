@@ -36,6 +36,7 @@ export default function TablesManager() {
     try {
       await api.del(`/tables/${id}`);
       setTables((current) => current.filter((table) => table.id !== id));
+      window.dispatchEvent(new Event('mountainhut:tables-changed'));
       if (editingId === id) cancelEdit();
     } catch (err) {
       setError(err.message);
@@ -76,6 +77,7 @@ export default function TablesManager() {
         const created = await api.post('/tables', { tableNumber, seats });
         setTables((current) => [...current, created]);
       }
+      window.dispatchEvent(new Event('mountainhut:tables-changed'));
       cancelEdit();
     } catch (err) {
       setError(err.message);
