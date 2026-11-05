@@ -19,6 +19,8 @@ export default function Register() {
 
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   if (loading) return null;
   if (user) return <Navigate to="/" replace />;
@@ -91,28 +93,48 @@ export default function Register() {
 
         <div className="field">
           <label htmlFor="password">Password *</label>
+          <div style={{ position: "relative" }}>
           <input
             id="password"
             name="password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             minLength={6}
             value={formData.password}
             onChange={handleChange}
+            style={{ width: "100%", paddingRight: 44 }}
             required
           />
+            <button type="button" aria-label={showPassword ? 'Hide password' : 'Show password'} aria-pressed={showPassword} onClick={() => setShowPassword((value) => !value)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#244c3d', cursor: 'pointer', padding: 6, display: 'flex' }}>
+              {showPassword ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c5 0 8.7 4 10 7a12 12 0 0 1-3.1 4.2"/><path d="M6.1 6.1A12.5 12.5 0 0 0 2 12c1.3 3 5 7 10 7 1.6 0 3-.4 4.3-1.1"/></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="field">
           <label htmlFor="confirmPassword">Confirm Password *</label>
+          <div style={{ position: "relative" }}>
           <input
             id="confirmPassword"
             name="confirmPassword"
-            type="password"
+            type={showConfirmPassword ? "text" : "password"}
             minLength={6}
             value={formData.confirmPassword}
             onChange={handleChange}
+            style={{ width: "100%", paddingRight: 44 }}
             required
           />
+            <button type="button" aria-label={showConfirmPassword ? 'Hide password' : 'Show password'} aria-pressed={showConfirmPassword} onClick={() => setShowConfirmPassword((value) => !value)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', border: 'none', background: 'transparent', color: '#244c3d', cursor: 'pointer', padding: 6, display: 'flex' }}>
+              {showConfirmPassword ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M3 3l18 18"/><path d="M10.6 10.6a2 2 0 0 0 2.8 2.8"/><path d="M9.9 5.2A10.9 10.9 0 0 1 12 5c5 0 8.7 4 10 7a12 12 0 0 1-3.1 4.2"/><path d="M6.1 6.1A12.5 12.5 0 0 0 2 12c1.3 3 5 7 10 7 1.6 0 3-.4 4.3-1.1"/></svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+              )}
+            </button>
+          </div>
         </div>
 
         <div className="field">

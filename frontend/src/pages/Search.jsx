@@ -281,11 +281,6 @@ export default function Search() {
           )}
         </section>
       )}
-
-      <footer className="field-guide-footer">
-        <span>THE MOUNTAIN HUT</span>
-        <span>MADE FOR THE MOMENT BETWEEN TRAIL AND TABLE</span>
-      </footer>
     </div>
   );
 }
