@@ -22,7 +22,7 @@ const renderAt = (path) =>
 
 test('home page is shown', async () => {
   renderAt('/');
-  expect(await screen.findByRole('heading', { name: 'A place to rest along the way.' })).toBeInTheDocument();
+  expect(await screen.findByRole('heading', { name: 'A place to pause along the trail.' })).toBeInTheDocument();
 });
 
 test('a protected page redirects to login when not logged in', async () => {
