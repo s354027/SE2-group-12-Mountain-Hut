@@ -1,17 +1,31 @@
-import { useState } from 'react';
-import { Navigate, useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../auth/AuthContext.jsx';
+import { useState } from "react";
+import { Navigate, useLocation, Link } from "react-router-dom";
+import { useAuth } from "../auth/AuthContext.jsx";
 
 export default function Login() {
   const { user, loading, login } = useAuth();
-  const navigate = useNavigate();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+  const location = useLocation(); // get the current location to determine where to redirect after login
 
   if (loading) return null; // still checking for an existing session
-  if (user) return <Navigate to="/" replace />;
+
+  if (user) {
+    const prevLocation = location.state?.from;
+    const goToBooking = prevLocation?.state?.afterLogin === "booking";
+    const returnState = prevLocation?.state
+      ? { ...prevLocation.state, afterLogin: null }
+      : undefined;
+    return (
+      <Navigate
+        to={goToBooking ? "/booking" : "/"}
+        replace
+        state={goToBooking ? returnState : undefined}
+      />
+    );
+  }
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -20,7 +34,6 @@ export default function Login() {
 
     try {
       await login(email, password);
-      navigate('/');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -52,12 +65,18 @@ export default function Login() {
             required
           />
         </div>
-        {error && <p role="alert" className="form-error">{error}</p>}
+        {error && (
+          <p role="alert" className="form-error">
+            {error}
+          </p>
+        )}
         <button type="submit" className="btn-primary" disabled={submitting}>
-          {submitting ? 'Logging in...' : 'Login'}
+          {submitting ? "Logging in..." : "Login"}
         </button>
       </form>
-      <p style={{ marginTop: '16px', fontSize: '0.875rem', textAlign: 'center' }}>
+      <p
+        style={{ marginTop: "16px", fontSize: "0.875rem", textAlign: "center" }}
+      >
         Don't have an account? <Link to="/register">Sign up here</Link>
       </p>
     </section>

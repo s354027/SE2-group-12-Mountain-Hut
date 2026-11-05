@@ -42,7 +42,7 @@ export default function Booking() {
     setSubmitting(true);
 
     try {
-      const booking = await api.post("/bookings", {
+      await api.post("/bookings", {
         slotId: availability.slotId,
         numberOfPeople: Number(numberOfPeople),
         allergyFlag,
@@ -57,7 +57,12 @@ export default function Booking() {
       setAllergyFlag(false);
       setAllergyDescription("");
     } catch (requestError) {
-      if (requestError.response?.status === 409) {
+      if (
+        requestError.status === 409 &&
+        requestError.message === "Hiker already has a booking for this slot"
+      ) {
+        setError("You already have a booking for this time slot.");
+      } else if (requestError.status === 409) {
         setError("Sorry, the selected table allocation is no longer available. Please check availability again.");
       } else {
         setError(requestError.message);
