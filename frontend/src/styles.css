@@ -1041,3 +1041,231 @@ button:active:not(:disabled) { transform: translateY(1px); }
   outline: 3px solid #a7c4ae;
   outline-offset: 3px;
 }
+
+/* Staff management — tables and slots (scoped to the staff page) */
+.staff-interface {
+  --staff-forest: var(--alpine-forest, #244c3d);
+  --staff-deep: var(--alpine-deep, #18382d);
+  --staff-line: var(--alpine-line, #dedfd5);
+  max-width: 1120px;
+  margin: 0 auto;
+  padding-bottom: 48px;
+}
+
+.staff-interface > h1 {
+  margin: 0 0 24px;
+  color: var(--staff-deep);
+  font: 500 clamp(2.1rem, 4vw, 3.2rem)/1.15 Georgia, serif;
+  letter-spacing: -.045em;
+}
+
+.staff-interface h2 {
+  margin: 30px 0 18px;
+  color: var(--staff-deep);
+  font: 500 clamp(1.5rem, 3vw, 2rem)/1.2 Georgia, serif;
+}
+
+/* Works with the existing <ul><li> table list: no data model changes. */
+.staff-interface ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 26px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.staff-interface ul > li {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-width: 0;
+  padding: 16px 18px;
+  color: var(--alpine-ink, #25332d);
+  font-weight: 600;
+  background: #fffefa;
+  border: 1px solid var(--staff-line);
+  border-radius: 13px;
+  box-shadow: 0 4px 18px rgba(32,55,43,.035);
+}
+
+/* When the label is wrapped in a span, buttons align to the right. */
+.staff-interface ul > li > span:first-child { margin-right: auto; }
+
+.staff-interface ul > li button,
+.staff-interface .btn-edit,
+.staff-interface .btn-cancel {
+  width: auto;
+  min-height: 36px;
+  padding: 7px 13px;
+  color: var(--staff-forest);
+  background: #f4f7f1;
+  border: 1px solid #b7c8ba;
+  border-radius: 8px;
+  font-size: .82rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.staff-interface ul > li button:hover:not(:disabled),
+.staff-interface .btn-edit:hover:not(:disabled),
+.staff-interface .btn-cancel:hover:not(:disabled) {
+  color: var(--staff-deep);
+  background: #e6efe5;
+  border-color: var(--staff-forest);
+}
+
+/* Add className="btn-delete" to destructive buttons for a clay-red accent. */
+.staff-interface .btn-delete,
+.staff-interface ul > li button.btn-delete {
+  color: #9b483a;
+  background: #fff7f3;
+  border-color: #e9c9bd;
+}
+.staff-interface .btn-delete:hover:not(:disabled),
+.staff-interface ul > li button.btn-delete:hover:not(:disabled) {
+  color: #7b3028;
+  background: #fbe8e1;
+  border-color: #d79e8b;
+}
+
+.staff-interface button:disabled { opacity: .55; cursor: not-allowed; }
+.staff-interface button:focus-visible,
+.staff-interface input:focus-visible,
+.staff-interface select:focus-visible {
+  outline: 3px solid #a7c4ae;
+  outline-offset: 2px;
+}
+
+/* Existing add/edit table and slot forms */
+.staff-interface form {
+  padding: 24px;
+  margin: 22px 0 32px;
+  background: #fffefa;
+  border: 1px solid var(--staff-line);
+  border-radius: 15px;
+}
+.staff-interface form label {
+  display: block;
+  margin: 0 0 7px;
+  color: var(--staff-forest);
+  font-size: .82rem;
+  font-weight: 750;
+}
+.staff-interface form input,
+.staff-interface form select,
+.staff-interface form textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 13px;
+  margin-bottom: 17px;
+  color: var(--alpine-ink, #25332d);
+  background: #fff;
+  border: 1px solid #cbd4cb;
+  border-radius: 9px;
+}
+.staff-interface form input:focus,
+.staff-interface form select:focus,
+.staff-interface form textarea:focus {
+  outline: none;
+  border-color: var(--staff-forest);
+  box-shadow: 0 0 0 3px rgba(36,76,61,.12);
+}
+.staff-interface form button[type="submit"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 18px;
+  color: #fff;
+  background: var(--staff-forest);
+  border: 1px solid var(--staff-forest);
+  border-radius: 9px;
+  font-weight: 750;
+  cursor: pointer;
+}
+.staff-interface form button[type="submit"]:hover:not(:disabled) {
+  background: var(--staff-deep);
+}
+
+/* Optional semantic table styling if the staff page uses a real <table>. */
+.staff-interface .table-scroll { overflow-x: auto; }
+.staff-interface table { width: 100%; border-collapse: separate; border-spacing: 0; background: #fffefa; border: 1px solid var(--staff-line); border-radius: 13px; overflow: hidden; }
+.staff-interface th { padding: 14px 16px; text-align: left; color: var(--staff-deep); background: #e9eee5; font-size: .78rem; letter-spacing: .04em; }
+.staff-interface td { padding: 14px 16px; border-top: 1px solid #e7e9e1; }
+.staff-interface tbody tr:hover { background: #f5f8f2; }
+
+@media (max-width: 720px) {
+  .staff-interface ul { grid-template-columns: 1fr; }
+  .staff-interface form { padding: 18px; }
+  .staff-interface ul > li { padding: 14px; }
+}
+
+/* TablesManager — Alpine staff table cards */
+.tables-manager { margin: 12px 0 36px; }
+.tables-manager-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+.tables-manager-eyebrow { color: #a96b4b; font-size: .68rem; font-weight: 800; letter-spacing: .13em; }
+.tables-manager-heading h2 { margin: 5px 0 6px; color: #18382d; font: 500 clamp(1.8rem, 3vw, 2.3rem) Georgia, serif; }
+.tables-manager-heading p { margin: 0; color: #60746a; font-size: .9rem; }
+.tables-manager-count { flex-shrink: 0; padding: 7px 12px; border-radius: 20px; color: #244c3d; background: #e4ece1; font-size: .78rem; font-weight: 700; }
+.tables-manager .tables-manager-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; padding: 0; margin: 0 0 26px; list-style: none; }
+.tables-manager .tables-manager-card { display: flex; align-items: center; justify-content: space-between; gap: 14px; min-width: 0; padding: 18px; border: 1px solid #dedfd5; border-radius: 14px; background: #fffefa; box-shadow: 0 4px 16px rgba(24,56,45,.035); }
+.tables-manager-card-info { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.tables-manager-card-number { display: grid; place-items: center; flex: 0 0 46px; width: 46px; height: 46px; border-radius: 11px; color: #fff; background: #244c3d; font: 500 1.25rem Georgia, serif; }
+.tables-manager-card-info > div { display: flex; flex-direction: column; gap: 3px; }
+.tables-manager-card-info strong { color: #25332d; font-size: .97rem; }
+.tables-manager-card-info > div > span { color: #60746a; font-size: .78rem; }
+.tables-manager-card-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.tables-manager .tables-manager-card-actions button { min-height: 36px; padding: 7px 13px; border-radius: 8px; font-size: .8rem; font-weight: 700; cursor: pointer; }
+.tables-manager .tables-manager-card-actions .btn-edit { color: #244c3d; background: #f4f7f1; border: 1px solid #b7c8ba; }
+.tables-manager .tables-manager-card-actions .btn-edit:hover { background: #e6efe5; border-color: #244c3d; }
+.tables-manager .tables-manager-card-actions .btn-delete { color: #9b483a; background: #fff7f3; border: 1px solid #e9c9bd; }
+.tables-manager .tables-manager-card-actions .btn-delete:hover { color: #7b3028; background: #fbe8e1; border-color: #d79e8b; }
+.tables-manager .tables-manager-empty { grid-column: 1 / -1; padding: 25px; border: 1px dashed #b7c8ba; border-radius: 12px; color: #60746a; background: #fffefa; text-align: center; }
+.tables-manager .tables-manager-form { padding: clamp(20px, 3vw, 28px); margin: 0; border: 1px solid #dedfd5; border-radius: 14px; background: #fffefa; }
+.tables-manager-form-heading h3 { margin: 0 0 5px; color: #18382d; font: 500 1.5rem Georgia, serif; }
+.tables-manager-form-heading p { margin: 0 0 20px; color: #60746a; font-size: .85rem; }
+.tables-manager-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.tables-manager-form-grid .field { margin-bottom: 18px; }
+.tables-manager-form-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.tables-manager .tables-manager-form-actions .btn-primary { width: auto; min-width: 160px; }
+.tables-manager .tables-manager-form-actions .btn-cancel { min-height: 46px; padding: 10px 22px; }
+@media (max-width: 850px) { .tables-manager .tables-manager-list { grid-template-columns: 1fr; } }
+@media (max-width: 540px) { .tables-manager-heading { align-items: flex-start; flex-direction: column; } .tables-manager .tables-manager-card { align-items: flex-start; flex-direction: column; } .tables-manager-card-actions { width: 100%; } .tables-manager-form-grid { grid-template-columns: 1fr; gap: 0; } }
+
+/* Homepage information sections — deliberately simpler than the search artwork. */
+.home-about-page { max-width: 1120px; margin: 0 auto; }
+.home-about-intro { max-width: none; margin: 10px 0 0; padding: clamp(36px, 5vw, 65px) 24px; }
+.home-about-intro h1 { max-width: 780px; }
+.home-intro-actions { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 24px; }
+.home-about-section { padding: clamp(36px, 5vw, 62px) 0; border-bottom: 1px solid var(--alpine-line); }
+.home-section-label { display: block; color: var(--alpine-clay); font-size: .7rem; font-weight: 850; letter-spacing: .16em; margin-bottom: 14px; }
+.home-about-section h2, .home-visit-cta h2 { font: 500 clamp(1.9rem, 3.5vw, 2.9rem)/1.17 Georgia, serif; letter-spacing: -.035em; color: var(--alpine-deep); margin: 0 0 20px; }
+.home-about-section p, .home-visit-cta p { color: #51675a; line-height: 1.75; }
+.home-about-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr); gap: clamp(24px, 5vw, 70px); align-items: start; }
+.home-about-grid > div p { max-width: 620px; }
+.home-facts-card { background: #fffefa; border: 1px solid var(--alpine-line); border-radius: 14px; padding: 26px; }
+.home-facts-heading { color: var(--alpine-forest); font-size: .72rem; font-weight: 850; letter-spacing: .14em; }
+.home-facts-card dl { margin: 16px 0 0; }
+.home-facts-card dl > div { display: flex; justify-content: space-between; gap: 16px; padding: 12px 0; border-top: 1px solid var(--alpine-line); }
+.home-facts-card dt { color: #66786d; font-size: .85rem; }
+.home-facts-card dd { margin: 0; text-align: right; color: var(--alpine-deep); font-weight: 650; font-size: .88rem; }
+.home-section-intro { max-width: 720px; margin-bottom: 25px; }
+.home-journey-grid, .home-highlights-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.home-detail-card, .home-highlight-card { background: #fffefa; border: 1px solid var(--alpine-line); border-radius: 14px; padding: clamp(20px, 3vw, 28px); }
+.home-detail-symbol { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 10px; background: #e5ebe2; color: var(--alpine-forest); font-size: 1.5rem; margin-bottom: 20px; }
+.home-detail-card h3, .home-highlight-card h3 { font: 500 1.42rem Georgia,serif; color: var(--alpine-deep); margin: 0 0 10px; }
+.home-detail-card p, .home-highlight-card p { margin: 0 0 10px; font-size: .92rem; }
+.home-detail-card .home-detail-note { color: #64776b; font-size: .85rem; }
+.home-highlight-card > span { display: block; font-size: .67rem; color: var(--alpine-clay); font-weight: 850; letter-spacing: .12em; margin-bottom: 20px; }
+.home-visit-cta { display: flex; align-items: center; justify-content: space-between; gap: 25px; flex-wrap: wrap; background: #e9ece2; border: 1px solid #d8dfd3; border-radius: 16px; padding: clamp(26px, 4vw, 44px); margin: 40px 0 24px; }
+.home-visit-cta h2 { margin-bottom: 8px; }
+.home-visit-cta p { margin: 0; }
+.home-visit-cta .home-primary-link { flex-shrink: 0; }
+@media (max-width: 800px) {
+  .home-about-grid { grid-template-columns: 1fr; }
+  .home-journey-grid, .home-highlights-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 480px) {
+  .home-intro-actions { gap: 15px; }
+  .home-visit-cta .home-primary-link { width: 100%; justify-content: center; }
+}
