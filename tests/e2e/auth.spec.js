@@ -12,13 +12,13 @@ test("hiker can login and logout", async ({ page }) => {
 
   await expect(page).toHaveURL("/");
   await expect(
-    page.getByRole("button", { name: "Logout" }),
+    page.getByRole("button", { name: "Log out" }),
   ).toBeVisible();
 
-  await page.getByRole("button", { name: "Logout" }).click();
+  await page.getByRole("button", { name: "Log out" }).click();
 
   await expect(
-    page.getByRole("link", { name: "Login" }),
+    page.getByRole("link", { name: "Log in" }),
   ).toBeVisible();
 
   // Session must really be gone.
@@ -54,7 +54,7 @@ test("authenticated session survives page reload", async ({ page }) => {
 
     await page.reload();
 
-    await expect(page.getByRole("button", { name: "Logout" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Log out" })).toBeVisible();
 
     await page.goto("/booking");
 
