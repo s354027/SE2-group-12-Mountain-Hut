@@ -17,7 +17,7 @@ async function openBookingFromSearch(page) {
   await page.getByLabel("Email").fill(
     "hiker.demo@mountainhut.local",
   );
-  await page.getByLabel("Password").fill("DemoHiker123");
+  await page.getByLabel("Password", { exact: true }).fill("DemoHiker123");
   await page.getByRole("button", { name: "Login" }).click();
 
   await expect(page).toHaveURL("/");
