@@ -13,6 +13,12 @@ const transporter = nodemailer.createTransport({
   secure: false,
 });
 
+// Without a listener, an async pool connection error (e.g. SMTP server down)
+// would be an unhandled 'error' event and crash the whole process.
+transporter.on?.("error", (err) => {
+  console.error("Email transporter error:", err);
+});
+
 /**
  * Sends an email using the configured transporter.
  * @param {*} to The recipient's email address.
