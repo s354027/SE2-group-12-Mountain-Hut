@@ -2,6 +2,40 @@ import { test, expect } from "./fixtures.js";
 
 const mailpitUrl = "http://localhost:8025";
 
+function getSearchDate() {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+async function openBookingFromSearch(page) {
+  await page.goto("/login");
+
+  await page.getByLabel("Email").fill(
+    "hiker.demo@mountainhut.local",
+  );
+  await page.getByLabel("Password").fill("DemoHiker123");
+  await page.getByRole("button", { name: "Login" }).click();
+
+  await expect(page).toHaveURL("/");
+
+  await page.goto("/search");
+  await page.getByLabel("YOUR DATE").fill(getSearchDate());
+  await page.getByLabel("ARRIVAL TIME").fill("19:15");
+  await page.getByLabel("YOUR PARTY").selectOption("3");
+  await page.getByRole("button", { name: "FIND A TABLE" }).click();
+
+  await expect(
+    page.getByRole("heading", { name: "A seat in the mountains." }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "CONTINUE TO BOOKING" })
+    .click();
+}
+
 test.beforeEach(async ({ request }) => {
   const response = await request.delete(
     `${mailpitUrl}/api/v1/messages`,
@@ -14,21 +48,7 @@ test("@email sends a booking confirmation email", async ({
   page,
   request,
 }) => {
-  await page.goto("/login");
-
-  await page.getByLabel("Email").fill(
-    "hiker.demo@mountainhut.local",
-  );
-  await page.getByLabel("Password").fill("DemoHiker123");
-  await page.getByRole("button", { name: "Login" }).click();
-
-  await expect(page).toHaveURL("/");
-
-  // This development-only route supplies valid availability data.
-  await page.goto("/booking-test");
-  await page
-    .getByRole("button", { name: "Start test booking" })
-    .click();
+  await openBookingFromSearch(page);
 
   await page
     .getByRole("button", { name: "Confirm booking" })
@@ -99,27 +119,7 @@ test("@email includes allergy requirements in booking confirmation", async ({
   page,
   request,
 }) => {
-  await page.goto("/login");
-
-  await page
-    .getByLabel("Email")
-    .fill("hiker.demo@mountainhut.local");
-
-  await page
-    .getByLabel("Password")
-    .fill("DemoHiker123");
-
-  await page
-    .getByRole("button", { name: "Login" })
-    .click();
-
-  await expect(page).toHaveURL("/");
-
-  await page.goto("/booking-test");
-
-  await page
-    .getByRole("button", { name: "Start test booking" })
-    .click();
+  await openBookingFromSearch(page);
 
   await page
     .getByLabel("I have allergies or dietary requirements")
@@ -196,27 +196,7 @@ test("@email cancelling booking confirmation creates no booking", async ({
     }
   });
 
-  await page.goto("/login");
-
-  await page
-    .getByLabel("Email")
-    .fill("hiker.demo@mountainhut.local");
-
-  await page
-    .getByLabel("Password")
-    .fill("DemoHiker123");
-
-  await page
-    .getByRole("button", { name: "Login" })
-    .click();
-
-  await expect(page).toHaveURL("/");
-
-  await page.goto("/booking-test");
-
-  await page
-    .getByRole("button", { name: "Start test booking" })
-    .click();
+  await openBookingFromSearch(page);
 
   await page
     .getByRole("button", { name: "Confirm booking" })
