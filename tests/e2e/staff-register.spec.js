@@ -33,7 +33,7 @@ test("warden can create a new employee", async ({ page }) => {
     await expect(page.getByText("Staff user E2E Employee (EMPLOYEE) created successfully!")).toBeVisible();
 
     // Verify that the created account really works.
-    await page.getByRole("button", { name: "Logout" }).click();
+    await page.getByRole("button", { name: "Log out" }).click();
 
     await login(
         page,
