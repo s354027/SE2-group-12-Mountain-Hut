@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../../api/client.js';
+import "./SlotsManager.css";
 
 const MEALS = ['LUNCH', 'DINNER'];
 const STATUSES = ['OPEN', 'CLOSED'];
@@ -9,8 +10,8 @@ const EMPTY_FORM = {
   startTime: '',
   duration: '60', // minutes
   meal: 'LUNCH',
-  totalCapacity: '',
   status: 'OPEN',
+  tableIds: [],
 };
 
 function validate(form) {
@@ -20,8 +21,8 @@ function validate(form) {
   if (!Number.isInteger(Number(form.duration)) || Number(form.duration) < 1) {
     return 'Duration must be a whole number of minutes (at least 1).';
   }
-  if (!Number.isInteger(Number(form.totalCapacity)) || Number(form.totalCapacity) < 1) {
-    return 'Total capacity must be a whole number (at least 1).';
+  if (!Array.isArray(form.tableIds) || form.tableIds.length === 0) {
+    return 'Select at least one table.';
   }
   return '';
 }
@@ -38,6 +39,8 @@ export default function SlotsManager() {
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [tables, setTables] = useState([]);
+  const [tablesError, setTablesError] = useState('');
 
   async function loadSlots() {
     setLoading(true);
@@ -51,8 +54,19 @@ export default function SlotsManager() {
     }
   }
 
+  async function loadTables() {
+    setTablesError('');
+
+    try {
+      setTables(await api.get('/tables'));
+    } catch (err) {
+      setTablesError(err.message || 'Could not load the tables.');
+    }
+  }
+
   useEffect(() => {
     loadSlots();
+    loadTables();
   }, []);
 
   function handleChange(event) {
@@ -67,8 +81,8 @@ export default function SlotsManager() {
       startTime: String(slot.startTime).slice(0, 5), // "19:00:00" -> "19:00"
       duration: String(slot.duration),
       meal: slot.meal,
-      totalCapacity: String(slot.totalCapacity),
       status: slot.status,
+      tableIds: (slot.tables || []).map((table) => table.id),
     });
     setFormError('');
     setMessage('');
@@ -96,8 +110,8 @@ export default function SlotsManager() {
       startTime: form.startTime,
       duration: Number(form.duration),
       meal: form.meal,
-      totalCapacity: Number(form.totalCapacity),
       status: form.status,
+      tableIds: form.tableIds,
     };
 
     setSaving(true);
@@ -117,6 +131,19 @@ export default function SlotsManager() {
       setSaving(false);
     }
   }
+
+  function handleTableChange(event) {
+    const tableId = Number(event.target.value);
+
+    setForm((current) => ({
+      ...current,
+      tableIds: event.target.checked ? [...current.tableIds, tableId] : current.tableIds.filter((id) => id !== tableId),
+    }));
+  }
+
+  const selectedCapacity = tables
+    .filter((table) => form.tableIds.includes(table.id))
+    .reduce((sum, table) => sum + Number(table.seats), 0);
 
   return (
     <section aria-labelledby="slots-title">
@@ -184,8 +211,46 @@ export default function SlotsManager() {
             </select>
           </div>
           <div className="field">
+            <label>Tables</label>
+
+            <div className="table-selection-grid">
+              {tables.map((table) => {
+                const selected = form.tableIds.includes(table.id);
+
+                return (
+                  <label
+                    key={table.id}
+                    className={`table-option ${selected ? "selected" : ""}`}
+                  >
+                    <input
+                      type="checkbox"
+                      value={table.id}
+                      checked={selected}
+                      onChange={handleTableChange}
+                    />
+
+                    <div>
+                      <strong>Table {table.tableNumber}</strong>
+                      <span>{table.seats} seats</span>
+                    </div>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="slot-capacity-summary">
+            <span>Total capacity</span>
+            <strong>{selectedCapacity} seats</strong>
+          </div>
+          <div className="field">
             <label htmlFor="slot-capacity">Total capacity (seats)</label>
-            <input id="slot-capacity" type="number" name="totalCapacity" min="1" value={form.totalCapacity} onChange={handleChange} />
+            <input
+              id="slot-capacity"
+              type="number"
+              value={selectedCapacity}
+              readOnly
+            />
           </div>
           <div className="field">
             <label htmlFor="slot-status">Status</label>
