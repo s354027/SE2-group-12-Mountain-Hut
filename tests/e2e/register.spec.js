@@ -17,7 +17,7 @@ test("new hiker can register successfully", async ({ page }) => {
   await expect(page).toHaveURL("/");
 
   await expect(
-    page.getByRole("button", { name: "Logout" }),
+    page.getByRole("button", { name: "Log out" }),
   ).toBeVisible();
 
   await page.goto("/booking");
