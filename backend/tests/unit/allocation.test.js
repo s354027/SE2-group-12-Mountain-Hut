@@ -118,6 +118,7 @@ describe("allocateTables", () => {
       slotId: 10,
       date: "2026-10-30",
       startTime: "19:00:00",
+      duration: 120,
       meal: "DINNER",
       partySize: 6,
       tables: [
@@ -200,6 +201,42 @@ describe("allocateTables", () => {
       partySize: 4,
       tables: [],
       breakdown: null,
+    });
+  });
+
+  it("returns the full slot duration when the requested time falls inside the slot", async () => {
+    const tables = [
+      { id: 1, tableNumber: 1, seats: 4 },
+    ];
+
+    findAll.mockResolvedValue([
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "12:00:00",
+        duration: 120,
+        meal: "LUNCH",
+      },
+    ]);
+
+    findFreeTables.mockResolvedValue(tables);
+
+    splitParty.mockReturnValue([
+      { ...tables[0], allocatedSeats: 2 },
+    ]);
+
+    const result = await allocateTables(
+      "2026-10-30",
+      "13:30:00",
+      2,
+    );
+
+    expect(result).toMatchObject({
+      available: true,
+      slotId: 10,
+      startTime: "12:00:00",
+      duration: 120,
+      meal: "LUNCH",
     });
   });
 });
