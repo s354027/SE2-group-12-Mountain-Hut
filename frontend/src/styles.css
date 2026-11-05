@@ -1269,3 +1269,21 @@ button:active:not(:disabled) { transform: translateY(1px); }
   .home-intro-actions { gap: 15px; }
   .home-visit-cta .home-primary-link { width: 100%; justify-content: center; }
 }
+.table-error-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  padding: 14px 18px;
+  background: #fff1ef;
+  color: #9b3d32;
+  border: 1px solid #e8b6ae;
+  border-left: 4px solid #b64e40;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.table-error-alert span:first-child {
+  font-size: 20px;
+}
