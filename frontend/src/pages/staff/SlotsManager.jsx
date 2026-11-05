@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.js';
+import './SlotsManager.css';
+
 
 const MEALS = ['LUNCH', 'DINNER'];
 const STATUSES = ['OPEN', 'CLOSED'];
@@ -9,7 +11,7 @@ const EMPTY_FORM = {
   startTime: '',
   duration: '60', // minutes
   meal: 'LUNCH',
-  totalCapacity: '',
+  tableIds: [],
   status: 'OPEN',
 };
 
@@ -20,9 +22,7 @@ function validate(form) {
   if (!Number.isInteger(Number(form.duration)) || Number(form.duration) < 1) {
     return 'Duration must be a whole number of minutes (at least 1).';
   }
-  if (!Number.isInteger(Number(form.totalCapacity)) || Number(form.totalCapacity) < 1) {
-    return 'Total capacity must be a whole number (at least 1).';
-  }
+  if (form.tableIds.length === 0) return 'Select at least one table.';
   return '';
 }
 
@@ -38,7 +38,11 @@ export default function SlotsManager() {
   const [formError, setFormError] = useState('');
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
+  const [tables, setTables] = useState([]);
+  const [tablesError, setTablesError] = useState('');
 
+  const tablesDropdownRef = useRef(null);
+  
   async function loadSlots() {
     setLoading(true);
     setLoadError('');
@@ -53,6 +57,9 @@ export default function SlotsManager() {
 
   useEffect(() => {
     loadSlots();
+    api.get('/tables')
+      .then(setTables)
+      .catch((err) => setTablesError(err.message || 'Could not load tables.'));
   }, []);
 
   function handleChange(event) {
@@ -60,25 +67,36 @@ export default function SlotsManager() {
     setForm((current) => ({ ...current, [name]: value }));
   }
 
-  function startEdit(slot) {
-    setEditingId(slot.id);
-    setForm({
-      date: slot.date,
-      startTime: String(slot.startTime).slice(0, 5), // "19:00:00" -> "19:00"
-      duration: String(slot.duration),
-      meal: slot.meal,
-      totalCapacity: String(slot.totalCapacity),
-      status: slot.status,
-    });
-    setFormError('');
-    setMessage('');
+ function startEdit(slot) {
+  // Close the dropdown when switching to another slot
+  if (tablesDropdownRef.current) {
+    tablesDropdownRef.current.open = false;
   }
 
-  function cancelEdit() {
-    setEditingId(null);
-    setForm(EMPTY_FORM);
-    setFormError('');
+  setEditingId(slot.id);
+
+  setForm({
+    date: slot.date,
+    startTime: String(slot.startTime).slice(0, 5),
+    duration: String(slot.duration),
+    meal: slot.meal,
+    tableIds: (slot.tables || []).map((table) => Number(table.id)),
+    status: slot.status,
+  });
+
+  setFormError('');
+  setMessage('');
+}
+
+ function cancelEdit() {
+  if (tablesDropdownRef.current) {
+    tablesDropdownRef.current.open = false;
   }
+
+  setEditingId(null);
+  setForm(EMPTY_FORM);
+  setFormError('');
+}
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -96,7 +114,8 @@ export default function SlotsManager() {
       startTime: form.startTime,
       duration: Number(form.duration),
       meal: form.meal,
-      totalCapacity: Number(form.totalCapacity),
+      totalCapacity: selectedCapacity,
+      tableIds: form.tableIds,
       status: form.status,
     };
 
@@ -116,6 +135,18 @@ export default function SlotsManager() {
     } finally {
       setSaving(false);
     }
+  }
+
+  const selectedTables = tables.filter((table) => form.tableIds.includes(Number(table.id)));
+  const selectedCapacity = selectedTables.reduce((total, table) => total + Number(table.seats), 0);
+
+  function toggleTable(tableId) {
+    setForm((current) => ({
+      ...current,
+      tableIds: current.tableIds.includes(tableId)
+        ? current.tableIds.filter((id) => id !== tableId)
+        : [...current.tableIds, tableId],
+    }));
   }
 
   return (
@@ -184,15 +215,48 @@ export default function SlotsManager() {
             </select>
           </div>
           <div className="field">
-            <label htmlFor="slot-capacity">Total capacity (seats)</label>
-            <input id="slot-capacity" type="number" name="totalCapacity" min="1" value={form.totalCapacity} onChange={handleChange} />
-          </div>
-          <div className="field">
             <label htmlFor="slot-status">Status</label>
             <select id="slot-status" name="status" value={form.status} onChange={handleChange} style={selectStyle}>
               {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
+        </div>
+        <div className="slot-tables-section">
+          <div className="slot-tables-heading">
+            <label id="slot-tables-label">Tables</label>
+            <span className="slot-capacity-value">Total capacity: <strong>{selectedCapacity} seats</strong></span>
+          </div>
+          {tablesError && <p role="alert" className="form-error">{tablesError}</p>}
+          {!tablesError && tables.length === 0 && <p>No tables available. Add tables in the Tables manager first.</p>}
+          {tables.length > 0 && (
+       <details ref={tablesDropdownRef} className="slot-tables-dropdown">
+              <summary aria-labelledby="slot-tables-label">
+                {selectedTables.length === 0
+                  ? 'Select tables'
+                  : `${selectedTables.length} ${selectedTables.length === 1 ? 'table' : 'tables'} selected`}
+              </summary>
+              <div className="slot-tables-options">
+                {tables.map((table) => (
+                  <label key={table.id} className="slot-table-option">
+                    <input
+                      type="checkbox"
+                      checked={form.tableIds.includes(Number(table.id))}
+                      onChange={() => toggleTable(Number(table.id))}
+                    />
+                    <span>Table {table.tableNumber}</span>
+                    <span className="slot-table-seats">{table.seats} seats</span>
+                  </label>
+                ))}
+              </div>
+            </details>
+          )}
+          {selectedTables.length > 0 && (
+            <div className="slot-selected-tables" aria-label="Selected tables">
+              {selectedTables.map((table) => (
+                <span key={table.id} className="slot-table-chip">Table {table.tableNumber}</span>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button type="submit" className="btn-primary" style={{ width: 'auto', padding: '10px 24px' }} disabled={saving}>
