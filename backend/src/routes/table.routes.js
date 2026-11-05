@@ -3,10 +3,10 @@ import { requireAuth } from '../middleware/requireAuth.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { createTableController } from '../controllers/tableController.js';
 
-export function createTableRouter({ DiningTable, SlotTable, BookingTable }) {
+export function createTableRouter({ DiningTable, SlotTable, BookingTable, Slot, Booking }) {
   const router = Router();
   const { getTables, createTable, updateTable, deleteTable } =
-    createTableController({ DiningTable, SlotTable, BookingTable });
+    createTableController({ DiningTable, SlotTable, BookingTable, Slot, Booking });
 
   // All endpoints require authentication as EMPLOYEE or WARDEN (MH-36)
   router.use(requireAuth, requireRole('EMPLOYEE', 'WARDEN'));

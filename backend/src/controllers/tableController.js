@@ -1,4 +1,6 @@
-export function createTableController({ DiningTable, SlotTable, BookingTable }) {
+import { Op } from 'sequelize';
+
+export function createTableController({ DiningTable, SlotTable, BookingTable, Slot, Booking }) {
   /**
    * GET /api/tables
    * Reads the list of dining tables.
@@ -91,10 +93,70 @@ export function createTableController({ DiningTable, SlotTable, BookingTable }) 
         updateData.seats = parsedSeats;
       }
 
-      await table.update(updateData);
+      // A table's seats contribute to every slot that uses it.
+      // Keep all updates atomic and protect already allocated seats.
+      if (updateData.seats !== undefined && updateData.seats !== table.seats && Slot && Booking) {
+        const sequelize = DiningTable.sequelize;
+        await sequelize.transaction(async (transaction) => {
+          const affectedSlots = await Slot.findAll({
+            include: [{
+              model: DiningTable,
+              as: 'tables',
+              through: { attributes: [] }
+            }],
+            transaction
+          });
+          const assignedSlots = affectedSlots.filter((slot) =>
+            (slot.tables || []).some((assigned) => Number(assigned.id) === Number(id))
+          );
+
+          if (updateData.seats < table.seats) {
+            for (const slot of assignedSlots) {
+              const bookings = await Booking.findAll({
+                where: {
+                  slotId: slot.id,
+                  status: { [Op.in]: ['PENDING', 'CONFIRMED'] }
+                },
+                include: [{
+                  model: DiningTable,
+                  as: 'tables',
+                  through: { attributes: ['allocatedSeats'] }
+                }],
+                transaction
+              });
+              const occupied = bookings.reduce((sum, booking) =>
+                sum + (booking.tables || [])
+                  .filter((bookedTable) => Number(bookedTable.id) === Number(id))
+                  .reduce((count, bookedTable) =>
+                    count + Number(bookedTable.BookingTable?.allocatedSeats || 0), 0), 0);
+              if (occupied > updateData.seats) {
+                const error = new Error(
+                  `Cannot reduce seats to ${updateData.seats}: slot ${slot.id} already has ${occupied} seats booked at this table`
+                );
+                error.status = 409;
+                throw error;
+              }
+            }
+          }
+
+          await table.update(updateData, { transaction });
+          for (const slot of assignedSlots) {
+            const capacity = slot.tables.reduce((sum, assigned) =>
+              sum + (Number(assigned.id) === Number(id)
+                ? updateData.seats
+                : Number(assigned.seats)), 0);
+            await slot.update({ totalCapacity: capacity }, { transaction });
+          }
+        });
+      } else {
+        await table.update(updateData);
+      }
 
       return res.status(200).json(table);
     } catch (err) {
+      if (err.status === 409) {
+        return res.status(409).json({ error: err.message });
+      }
       console.error('Error updating table:', err);
       return res.status(500).json({ error: 'Failed to update table' });
     }
