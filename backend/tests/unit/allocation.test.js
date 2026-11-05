@@ -180,4 +180,26 @@ describe("allocateTables", () => {
       breakdown: null,
     });
   });
+
+  it("treats a missing startTime as midnight instead of throwing", async () => {
+    findAll.mockResolvedValue([
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "19:00:00",
+        duration: 120,
+        meal: "DINNER",
+      },
+    ]);
+
+    await expect(
+      allocateTables("2026-10-30", "", 4),
+    ).resolves.toMatchObject({
+      available: false,
+      reason: "The entered time does not fall within any service slot",
+      partySize: 4,
+      tables: [],
+      breakdown: null,
+    });
+  });
 });

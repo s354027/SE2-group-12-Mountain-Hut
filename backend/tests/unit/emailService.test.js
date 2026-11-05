@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-const { sendMail, verify } = vi.hoisted(() => ({
+const { sendMail, verify, on } = vi.hoisted(() => ({
   sendMail: vi.fn(),
   verify: vi.fn(),
+  on: vi.fn(),
 }));
 
 vi.mock("nodemailer", () => ({
   default: {
-    createTransport: vi.fn(() => ({ sendMail, verify })),
+    createTransport: vi.fn(() => ({ sendMail, verify, on })),
   },
 }));
 
@@ -15,6 +16,9 @@ import {
   sendBookingConfirmation,
   verifyTransporter,
 } from "../../src/services/emailService.js";
+
+// Captured right after import, before beforeEach() clears the mocks below.
+const errorHandler = on.mock.calls.find(([event]) => event === "error")?.[1];
 
 describe("emailService", () => {
   beforeEach(() => {
@@ -112,5 +116,14 @@ describe("emailService", () => {
     await expect(verifyTransporter()).resolves.toBeUndefined();
 
     expect(console.error).toHaveBeenCalledTimes(1);
+  });
+
+  it("logs pool connection errors from the transporter instead of crashing", () => {
+    expect(errorHandler).toBeInstanceOf(Function);
+
+    const poolError = new Error("connect ECONNREFUSED 127.0.0.1:1025");
+    errorHandler(poolError);
+
+    expect(console.error).toHaveBeenCalledWith("Email transporter error:", poolError);
   });
 });
