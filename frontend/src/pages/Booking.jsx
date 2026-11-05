@@ -8,14 +8,15 @@ function formatTime(time) {
 
 function getSlotEndTime(startTime, endTime, duration) {
   if (endTime) return formatTime(endTime);
-  if (!startTime) return "Not available";
+
+  if (!startTime || !Number.isFinite(Number(duration))) {
+    return "Not available";
+  }
 
   const [hours, minutes] = startTime.split(":").map(Number);
   const end = new Date(2000, 0, 1, hours, minutes);
-  end.setMinutes(
-    end.getMinutes() +
-      (Number.isFinite(Number(duration)) ? Number(duration) : 60),
-  );
+  end.setMinutes(end.getMinutes() + Number(duration));
+  
   return end.toTimeString().slice(0, 5);
 }
 
@@ -125,7 +126,7 @@ export default function Booking() {
               </dd>
             </div>
             <div>
-              <dt>Hourly slot</dt>
+              <dt>Service slot</dt>
               <dd>
                 {formatTime(availability.startTime)}-
                 {getSlotEndTime(

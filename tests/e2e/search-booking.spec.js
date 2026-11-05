@@ -65,3 +65,31 @@ test("search with no available slot cannot continue to booking", async ({ page }
     await expect(page.getByRole("button", { name: /CONTINUE TO BOOKING/i })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /ADJUST YOUR SEARCH/i })).toBeVisible();
 });
+
+test("booking shows the full service slot duration for a time inside the slot", async ({ page }) => {
+  const date = tomorrowDate();
+
+  // Login first: this test focuses on the slot duration regression.
+  await page.goto("/login");
+  await page.getByLabel("Email").fill("hiker.demo@mountainhut.local");
+  await page.getByLabel("Password", { exact: true }).fill("DemoHiker123");
+  await page.getByRole("button", { name: "Login" }).click();
+  await expect(page).toHaveURL("/");
+
+  // Search inside the 12:00-14:00 lunch slot.
+  await page.goto("/search");
+
+  await page.getByLabel("YOUR DATE").fill(date);
+  await page.getByLabel("ARRIVAL TIME").fill("13:30");
+  await page.getByLabel("YOUR PARTY").selectOption("2");
+  await page.getByRole("button", { name: /FIND A TABLE/i }).click();
+
+  await expect(page.getByText("AVAILABLE", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /CONTINUE TO BOOKING/i }).click();
+  await expect(page).toHaveURL("/booking");
+
+  // Regression: the real slot is 12:00-14:00, not 12:00-13:00.
+  const serviceSlot = page.getByText("Service slot", { exact: true }).locator("..").locator("dd");
+
+  await expect(serviceSlot).toHaveText(/12:00\s*-\s*14:00/);
+});

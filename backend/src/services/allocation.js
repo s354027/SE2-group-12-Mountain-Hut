@@ -113,6 +113,7 @@ export async function allocateTables(date, startTime, partySize) {
     slotId: currentSlot.id,
     date: currentSlot.date,
     startTime: currentSlot.startTime,
+    duration: currentSlot.duration,
     meal: currentSlot.meal,
     partySize: numPartySize,
     tables: allocatedTables,
