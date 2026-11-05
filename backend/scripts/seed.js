@@ -47,7 +47,7 @@ function getSeedDates(days) {
   const today = new Date();
   const dates = [];
 
-  for (let offset = 1; offset <= days; offset += 1) {
+  for (let offset = 0; offset <= days; offset += 1) {
     const date = new Date(Date.UTC(
       today.getFullYear(),
       today.getMonth(),
