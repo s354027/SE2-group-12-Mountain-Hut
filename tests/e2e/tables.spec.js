@@ -138,94 +138,109 @@ async function loginAsHiker(page) {
 }
 
 test("warden cannot reduce table seats below already booked seats", async ({ page }) => {
-    const date = futureDate();
+  const date = futureDate();
 
-    await loginAsHiker(page);
+  await loginAsHiker(page);
 
-    // Get a real available slot.
-    const availability = await page.evaluate(async ({ date }) => {
-        const response = await fetch(
-            `/api/availability?date=${date}&startTime=12:00&partySize=2`,
-        { credentials: "include" },
-        );
-        return {
-            status: response.status,
-            body: await response.json(),
-        };
-    }, { date });
-
-    expect(availability.status).toBe(200);
-    expect(availability.body.available).toBe(true);
-
-    // Create a real booking using the authenticated hiker session.
-    const booking = await page.evaluate(async ({ slotId }) => {
-        const response = await fetch("/api/bookings", {
-        method: "POST",
-        credentials: "include",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-            slotId,
-            numberOfPeople: 2,
-            allergyFlag: false,
-            allergyDescription: null,
-        }),
-        });
-
-        return {
-        status: response.status,
-        body: await response.json(),
-        };
-    }, { slotId: availability.body.slotId });
-
-    expect(booking.status).toBe(201);
-    expect(booking.body.tables).toHaveLength(1);
-
-    const bookedTable = booking.body.tables[0];
-
-    expect(bookedTable.allocatedSeats).toBe(2);
-
-    // End hiker session without testing the logout UI again.
-    const logoutStatus = await page.evaluate(async () => {
-        const response = await fetch("/api/auth/logout", {
-        method: "POST",
-        credentials: "include",
-        });
-
-        return response.status;
-    });
-
-    expect(logoutStatus).toBe(204);
-
-    // Switch to warden.
-    await loginAsWarden(page);
-
-    await page.goto("/staff/slots");
-
-    const tableCard = page.locator(".tables-manager-card")
-        .filter({has: page.getByText("Table 1", { exact: true })});
-
-    await expect(tableCard).toContainText("2 seats available");
-
-    await tableCard.getByRole("button", { name: "Edit" }).click();
-
-    await page.getByLabel("Seats", { exact: true }).fill("1");
-
-    const responsePromise = page.waitForResponse(
-        (response) =>
-        response.url().includes("/api/tables/") &&
-        response.request().method() === "PUT",
+  // Get a real available slot.
+  const availability = await page.evaluate(async ({ date }) => {
+    const response = await fetch(
+      `/api/availability?date=${date}&startTime=12:00&partySize=2`,
+      { credentials: "include" },
     );
 
-    await page.getByRole("button", { name: "Save changes" }).click();
+    return {
+      status: response.status,
+      body: await response.json(),
+    };
+  }, { date });
 
-    const response = await responsePromise;
+  expect(availability.status).toBe(200);
+  expect(availability.body.available).toBe(true);
 
-    expect(response.status()).toBe(409);
-    await expect(page.getByRole("alert")).toContainText("Cannot reduce seats to 1");
-    await expect(page.getByRole("alert")).toContainText("already has 2 seats booked at this table");
+  // Create a real booking.
+  const booking = await page.evaluate(async ({ slotId }) => {
+    const response = await fetch("/api/bookings", {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        slotId,
+        numberOfPeople: 2,
+        allergyFlag: false,
+        allergyDescription: null,
+      }),
+    });
 
-    // Update must have been rejected.
-    await expect(tableCard).toContainText("2 seats available");
+    return {
+      status: response.status,
+      body: await response.json(),
+    };
+  }, { slotId: availability.body.slotId });
+
+  expect(booking.status).toBe(201);
+  expect(booking.body.tables).toHaveLength(1);
+
+  const bookedTable = booking.body.tables[0];
+
+  expect(bookedTable.allocatedSeats).toBe(2);
+
+  // End hiker session.
+  const logoutStatus = await page.evaluate(async () => {
+    const response = await fetch("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+
+    return response.status;
+  });
+
+  expect(logoutStatus).toBe(204);
+
+  // Login as warden.
+  await loginAsWarden(page);
+
+  await page.goto("/staff/slots");
+
+  // Find the table that was actually assigned to the booking.
+  const tableCard = page
+    .locator(".tables-manager-card")
+    .filter({
+      has: page.getByText(
+        `Table ${bookedTable.tableNumber}`,
+        { exact: true },
+      ),
+    });
+
+  await tableCard
+    .getByRole("button", { name: "Edit" })
+    .click();
+
+  await page
+    .getByLabel("Seats", { exact: true })
+    .fill("1");
+
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes("/api/tables/") &&
+      response.request().method() === "PUT",
+  );
+
+  await page
+    .getByRole("button", { name: "Save changes" })
+    .click();
+
+  const response = await responsePromise;
+
+  expect(response.status()).toBe(409);
+
+  await expect(
+    page.getByRole("alert"),
+  ).toContainText("Cannot reduce seats to 1");
+
+  await expect(
+    page.getByRole("alert"),
+  ).toContainText("already has 2 seats booked at this table");
 });
