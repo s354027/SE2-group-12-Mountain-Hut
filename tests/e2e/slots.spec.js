@@ -13,61 +13,112 @@ async function loginAsWarden(page) {
 }
 
 test("warden can create and update a slot", async ({ page }) => {
-  await loginAsWarden(page);
+    await loginAsWarden(page);
 
-  await page.goto("/staff/slots");
+    await page.goto("/staff/slots");
 
-  // Create a new slot
-  await page.getByLabel("Date").fill("2099-12-31");
-  await page.getByLabel("Start time").fill("19:30");
-  await page.getByLabel("Duration (minutes)").fill("90");
-  await page.getByLabel("Meal").selectOption("DINNER");
-  await page.getByLabel("Total capacity (seats)").fill("12");
-  await page.getByLabel("Status").selectOption("OPEN");
+    // CREATE
+    await page.getByLabel("Date").fill("2099-12-31");
+    await page.getByLabel("Start time").fill("19:30");
+    await page.getByLabel("Duration (minutes)").fill("90");
+    await page.getByLabel("Meal").selectOption("DINNER");
+    await page.getByLabel("Status").selectOption("OPEN");
 
-  await page.getByRole("button", { name: "Add slot" }).click();
+    // Open tables dropdown.
+    await page.locator("details.slot-tables-dropdown > summary").click();
 
-  await expect(page.getByRole("status")).toHaveText("Slot created.");
+    // Table 1 = 2 seats
+    const table1 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 1", { exact: true }),
+    });
 
-  const slotRow = page.getByRole("row").filter({ hasText: "2099-12-31" });
+    // Table 3 = 4 seats
+    const table3 = page.locator(".slot-table-option").filter({has: page.getByText("Table 3", { exact: true })});
 
-  await expect(slotRow).toContainText("19:30");
-  await expect(slotRow).toContainText("90");
-  await expect(slotRow).toContainText("DINNER");
-  await expect(slotRow).toContainText("12");
-  await expect(slotRow).toContainText("OPEN");
+    await table1.getByRole("checkbox").check();
+    await table3.getByRole("checkbox").check();
 
-  // Edit the same slot
-  await slotRow.getByRole("button", { name: "Edit" }).click();
+    // 2 + 4 = 6
+    await expect(page.getByText("Total capacity:").locator("..")).toContainText("6 seats");
+    await page.getByRole("button", { name: "Add slot" }).click();
+    await expect(page.getByRole("status")).toHaveText("Slot created.");
 
-  await page.getByLabel("Total capacity (seats)").fill("14");
+    let slotRow = page.getByRole("row").filter({ hasText: "2099-12-31" });
 
-  await page.getByLabel("Status").selectOption("CLOSED");
+    await expect(slotRow).toContainText("19:30");
+    await expect(slotRow).toContainText("90");
+    await expect(slotRow).toContainText("DINNER");
+    await expect(slotRow.getByRole("cell", { name: "6", exact: true })).toBeVisible();
+    await expect(slotRow.getByRole("cell", { name: "1, 3", exact: true })).toBeVisible();
+    await expect(slotRow).toContainText("OPEN");
 
-  await page.getByRole("button", { name: "Save changes" }).click();
+    // UPDATE
+    await slotRow.getByRole("button", { name: "Edit" }).click();
 
-  await expect(page.getByRole("status")).toHaveText("Slot updated.");
+    await expect(page.getByRole("heading", { name: "Edit the slot" })).toBeVisible();
 
-  const updatedRow = page.getByRole("row").filter({ hasText: "2099-12-31" });
+    // Open tables dropdown
+    await page.locator("details.slot-tables-dropdown > summary").click();
 
-  await expect(updatedRow).toContainText("14");
-  await expect(updatedRow).toContainText("CLOSED");
+    // Existing tables must already be selected.
+
+    await expect(table1.getByRole("checkbox")).toBeChecked();
+    await expect(table3.getByRole("checkbox")).toBeChecked();
+
+
+
+    // Remove Table 1 (2 seats) and add Table 5 (6 seats).
+    await table1.getByRole("checkbox").uncheck();
+
+    const table5 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 5", { exact: true }),
+    });
+
+    await table5.getByRole("checkbox").check();
+
+    // Table 3 + Table 5 = 4 + 6 = 10
+    await expect(
+        page.getByText("Total capacity:").locator(".."),
+    ).toContainText("10 seats");
+
+    await page
+        .getByLabel("Status")
+        .selectOption("CLOSED");
+
+    await page
+        .getByRole("button", { name: "Save changes" })
+        .click();
+
+    await expect(page.getByRole("status")).toHaveText("Slot updated.");
+
+    slotRow = page.getByRole("row").filter({ hasText: "2099-12-31" });
+    await expect(slotRow.getByRole("cell", { name: "10", exact: true })).toBeVisible();
+    await expect(slotRow.getByRole("cell", { name: "3, 5", exact: true })).toBeVisible();
+    await expect(slotRow).toContainText("CLOSED");
 });
 
 test("slot form validates required fields", async ({ page }) => {
-  await loginAsWarden(page);
+    await loginAsWarden(page);
 
-  await page.goto("/staff/slots");
+    await page.goto("/staff/slots");
 
-  await page.getByRole("button", { name: "Add slot" }).click();
+    await page.getByLabel("Date").fill("2099-12-30");
+    await page.getByLabel("Start time").fill("12:30");
+    await page.getByLabel("Duration (minutes)").fill("60");
+    await page.getByLabel("Meal").selectOption("LUNCH");
+    await page.getByLabel("Status").selectOption("OPEN");
 
-  await expect(page.getByText("Date is required.", { exact: true })).toBeVisible();
+    // Do not select any table.
+    await page.getByRole("button", { name: "Add slot" }).click();
 
-  await page.getByLabel("Date").fill("2099-12-31");
+    await expect(
+        page.getByRole("alert").filter({
+            hasText: "Select at least one table.",
+        }),
+    ).toHaveText("Select at least one table.");
 
-  await page.getByRole("button", { name: "Add slot" }).click();
-
-  await expect(page.getByRole("alert").filter({ hasText: "Start time is required." })).toHaveText("Start time is required.");
+    // Slot must not have been created.
+    await expect(page.getByRole("row").filter({ hasText: "2099-12-30" })).toHaveCount(0);
 });
 
 
@@ -79,27 +130,14 @@ test("slot form rejects invalid duration", async ({ page }) => {
     await page.getByLabel("Date").fill("2099-12-31");
     await page.getByLabel("Start time").fill("19:30");
     await page.getByLabel("Duration (minutes)").fill("0");
-    await page.getByLabel("Total capacity (seats)").fill("10");
 
     await page.getByRole("button", { name: "Add slot" }).click();
 
-    await expect(page.getByText("Duration must be a whole number of minutes (at least 1).", { exact: true })).toBeVisible();
-});
-
-
-test("slot form rejects invalid capacity", async ({ page }) => {
-    await loginAsWarden(page);
-
-    await page.goto("/staff/slots");
-
-    await page.getByLabel("Date").fill("2099-12-31");
-    await page.getByLabel("Start time").fill("19:30");
-    await page.getByLabel("Duration (minutes)").fill("60");
-    await page.getByLabel("Total capacity (seats)").fill("0");
-
-    await page.getByRole("button", { name: "Add slot" }).click();
-
-    await expect(page.getByText("Total capacity must be a whole number (at least 1).", { exact: true })).toBeVisible();
+    await expect(
+        page.getByRole("alert").filter({
+            hasText: "Duration must be a whole number of minutes (at least 1).",
+        }),
+    ).toHaveText("Duration must be a whole number of minutes (at least 1).");
 });
 
 async function loginAsEmployee(page) {
@@ -119,9 +157,22 @@ test("employee can create a slot", async ({ page }) => {
     await page.getByLabel("Start time").fill("12:30");
     await page.getByLabel("Duration (minutes)").fill("60");
     await page.getByLabel("Meal").selectOption("LUNCH");
-    await page.getByLabel("Total capacity (seats)").fill("8");
     await page.getByLabel("Status").selectOption("OPEN");
 
+    await page.locator("details.slot-tables-dropdown > summary").click();
+
+    const table1 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 1", { exact: true }),
+    });
+
+    const table3 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 3", { exact: true }),
+    });
+
+    await table1.getByRole("checkbox").check();
+    await table3.getByRole("checkbox").check();
+
+    await expect(page.getByText("Total capacity:").locator("..")).toContainText("6 seats");
     await page.getByRole("button", { name: "Add slot" }).click();
 
     await expect(page.getByRole("status")).toHaveText("Slot created.");
@@ -129,24 +180,16 @@ test("employee can create a slot", async ({ page }) => {
     const slotRow = page.getByRole("row").filter({ hasText: "2099-12-29" });
 
     await expect(slotRow).toContainText("12:30");
+    await expect(slotRow).toContainText("60");
     await expect(slotRow).toContainText("LUNCH");
-    await expect(slotRow).toContainText("8");
+
+    await expect(slotRow.getByRole("cell", { name: "6", exact: true })).toBeVisible();
+    await expect(slotRow.getByRole("cell", { name: "1, 3", exact: true })).toBeVisible();
     await expect(slotRow).toContainText("OPEN");
 });
 
 test("cancelling slot edit does not save changes", async ({ page }) => {
     await loginAsWarden(page);
-
-    let updateRequests = 0;
-
-    page.on("request", (request) => {
-        if (
-        request.url().includes("/api/slots/") &&
-        request.method() === "PUT"
-        ) {
-        updateRequests++;
-        }
-    });
 
     await page.goto("/staff/slots");
 
@@ -155,8 +198,24 @@ test("cancelling slot edit does not save changes", async ({ page }) => {
     await page.getByLabel("Start time").fill("18:30");
     await page.getByLabel("Duration (minutes)").fill("60");
     await page.getByLabel("Meal").selectOption("DINNER");
-    await page.getByLabel("Total capacity (seats)").fill("12");
     await page.getByLabel("Status").selectOption("OPEN");
+
+    await page.locator("details.slot-tables-dropdown > summary").click();
+
+    const table1 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 1", { exact: true }),
+    });
+
+    const table3 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 3", { exact: true }),
+    });
+
+    const table5 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 5", { exact: true }),
+    });
+
+    await table1.getByRole("checkbox").check();
+    await table3.getByRole("checkbox").check();
 
     await page.getByRole("button", { name: "Add slot" }).click();
 
@@ -164,28 +223,45 @@ test("cancelling slot edit does not save changes", async ({ page }) => {
 
     const slotRow = page.getByRole("row").filter({ hasText: "2099-12-28" });
 
-    await expect(slotRow).toContainText("12");
+    await expect(slotRow.getByRole("cell", { name: "6", exact: true })).toBeVisible();
+    await expect(slotRow.getByRole("cell", { name: "1, 3", exact: true })).toBeVisible();
     await expect(slotRow).toContainText("OPEN");
 
-    // Start editing it.
+    let updateRequests = 0;
+
+    page.on("request", (request) => {
+        if (
+            request.url().includes("/api/slots/") &&
+            request.method() === "PUT"
+        ) {
+            updateRequests++;
+        }
+    });
+
+    // Start editing.
     await slotRow.getByRole("button", { name: "Edit" }).click();
 
     await expect(page.getByRole("heading", { name: "Edit the slot" })).toBeVisible();
 
-    // Change values, but do not save.
-    await page.getByLabel("Total capacity (seats)").fill("99");
+    await page.locator("details.slot-tables-dropdown > summary").click();
+
+    await expect(table1.getByRole("checkbox")).toBeChecked();
+    await expect(table3.getByRole("checkbox")).toBeChecked();
+
+    // Change tables and status, but cancel.
+    await table1.getByRole("checkbox").uncheck();
+    await table5.getByRole("checkbox").check();
 
     await page.getByLabel("Status").selectOption("CLOSED");
 
     await page.getByRole("button", { name: "Cancel" }).click();
-
-    // Editing mode must be closed.
+    
     await expect(page.getByRole("heading", { name: "Add a slot" })).toBeVisible();
 
-    // Original values must still be displayed.
-    await expect(slotRow).toContainText("12");
+    // Original slot must still be unchanged.
+    await expect(slotRow.getByRole("cell", { name: "6", exact: true })).toBeVisible();
+    await expect(slotRow.getByRole("cell", { name: "1, 3", exact: true })).toBeVisible();
     await expect(slotRow).toContainText("OPEN");
 
-    // Most importantly: no update reached the backend.
     expect(updateRequests).toBe(0);
 });
