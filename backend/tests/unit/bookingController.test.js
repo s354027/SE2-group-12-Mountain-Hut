@@ -114,10 +114,52 @@ describe("createBooking", () => {
       numberOfPeople: 2,
       allergyFlag: false,
       allergyDescription: null,
+      dietaryRequirements: [],
     });
     expect(notifyBookingConfirmed).toHaveBeenCalledWith(5);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(booking);
+  });
+
+  it("forwards a valid dietaryRequirements list", async () => {
+    createBookingForHiker.mockResolvedValue({ id: 8 });
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({ slotId: 1, numberOfPeople: 2, dietaryRequirements: ["vegetarian", "nut allergy"] }),
+      res,
+    );
+
+    expect(createBookingForHiker).toHaveBeenCalledWith(
+      expect.objectContaining({ dietaryRequirements: ["vegetarian", "nut allergy"] }),
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("rejects a non-array dietaryRequirements", async () => {
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({ slotId: 1, numberOfPeople: 2, dietaryRequirements: "vegetarian" }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "dietaryRequirements must be an array" });
+    expect(createBookingForHiker).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements list with a blank entry", async () => {
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({ slotId: 1, numberOfPeople: 2, dietaryRequirements: ["vegetarian", "   "] }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "Each dietary requirement must be a non-empty string" });
+    expect(createBookingForHiker).not.toHaveBeenCalled();
   });
 
   it("trims the allergy description and forwards it when allergyFlag is true", async () => {

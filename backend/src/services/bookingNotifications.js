@@ -49,6 +49,14 @@ export async function notifyBookingConfirmed(bookingId) {
 
   const slotStart = formatTimeForEmail(slot.startTime);
 
+  // Combine the legacy single allergy description with the new
+  // multiple dietary requirements list (MH-05 improvement) into
+  // the single free-text field the confirmation email displays.
+  const requirements = [
+    ...(booking.allergyFlag && booking.allergyDescription ? [booking.allergyDescription] : []),
+    ...(booking.dietaryRequirements ?? [])
+  ];
+
   return sendBookingConfirmation(
     hiker.email,
     `${hiker.firstName} ${hiker.lastName}`,
@@ -57,6 +65,6 @@ export async function notifyBookingConfirmed(bookingId) {
     slotStart,
     addMinutesToTime(slotStart, slot.duration),
     booking.numberOfPeople,
-    booking.allergyFlag ? booking.allergyDescription : null
+    requirements.length > 0 ? requirements.join(", ") : null
   );
 }

@@ -67,7 +67,8 @@ export async function createBookingForHiker({
   slotId,
   numberOfPeople,
   allergyFlag = false,
-  allergyDescription = null
+  allergyDescription = null,
+  dietaryRequirements = []
 }) {
     const { User, Slot, Booking, BookingTable } = models;
 
@@ -86,6 +87,18 @@ export async function createBookingForHiker({
 
     if (allergyFlag && (typeof allergyDescription !== 'string' || !allergyDescription.trim())) {
         throw new BookingError(400, 'Allergy description is required');
+    }
+
+    if (!Array.isArray(dietaryRequirements)) {
+        throw new BookingError(400, 'dietaryRequirements must be an array');
+    }
+
+    const cleanedDietaryRequirements = dietaryRequirements.map(
+        requirement => (typeof requirement === 'string' ? requirement.trim() : '')
+    );
+
+    if (cleanedDietaryRequirements.some(requirement => !requirement)) {
+        throw new BookingError(400, 'Each dietary requirement must be a non-empty string');
     }
 
     // All database operations belong to one transaction
@@ -191,7 +204,8 @@ export async function createBookingForHiker({
                 numberOfPeople,
                 status: 'CONFIRMED',
                 allergyFlag,
-                allergyDescription: allergyFlag ? allergyDescription.trim() : null
+                allergyDescription: allergyFlag ? allergyDescription.trim() : null,
+                dietaryRequirements: cleanedDietaryRequirements
             }, { transaction });
 
             // 9. Save the allocated seats for each table
@@ -214,6 +228,7 @@ export async function createBookingForHiker({
                 slotId: booking.slotId,
                 numberOfPeople: booking.numberOfPeople,
                 status: booking.status,
+                dietaryRequirements: booking.dietaryRequirements,
                 tables: allocatedTables.map(table => ({
                     id: table.id,
                     tableNumber: table.tableNumber,
