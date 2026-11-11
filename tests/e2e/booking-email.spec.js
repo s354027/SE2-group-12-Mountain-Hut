@@ -121,13 +121,19 @@ test("@email includes allergy requirements in booking confirmation", async ({
 }) => {
   await openBookingFromSearch(page);
 
+  await page.getByRole("button", { name: "Add", exact: true }).click();
+
   await page
-    .getByLabel("I have allergies or dietary requirements")
+    .getByLabel("Allergy or dietary requirement")
+    .fill("Severe peanut allergy");
+
+  await page
+    .getByLabel("This is an allergy (important)")
     .check();
 
   await page
-    .getByLabel("Allergy notes")
-    .fill("Severe peanut allergy");
+    .getByRole("button", { name: "Save requirement" })
+    .click();
 
   await page
     .getByRole("button", { name: "Confirm booking" })
