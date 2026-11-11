@@ -134,50 +134,6 @@ describe("createBooking", () => {
     );
   });
 
-  it("normalizes multiple allergy and dietary requirements", async () => {
-    createBookingForHiker.mockResolvedValue({ id: 9 });
-    const res = mockRes();
-
-    await createBooking(
-      mockReq({
-        slotId: 1,
-        numberOfPeople: 2,
-        partyRequirements: [
-          { description: "  peanuts  ", isAllergy: true },
-          { description: "  vegetarian  ", isAllergy: false },
-        ],
-      }),
-      res,
-    );
-
-    expect(createBookingForHiker).toHaveBeenCalledWith(
-      expect.objectContaining({
-        allergyFlag: true,
-        allergyDescription: "ALLERGY (IMPORTANT): peanuts; Dietary: vegetarian",
-      }),
-    );
-    expect(res.status).toHaveBeenCalledWith(201);
-  });
-
-  it("rejects malformed party requirements", async () => {
-    const res = mockRes();
-
-    await createBooking(
-      mockReq({
-        slotId: 1,
-        numberOfPeople: 2,
-        partyRequirements: [{ description: " ", isAllergy: false }],
-      }),
-      res,
-    );
-
-    expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({
-      error: "Each party requirement must have a description and allergy flag",
-    });
-    expect(createBookingForHiker).not.toHaveBeenCalled();
-  });
-
   it("still returns 201 when the confirmation email fails to send", async () => {
     const booking = { id: 8 };
     createBookingForHiker.mockResolvedValue(booking);

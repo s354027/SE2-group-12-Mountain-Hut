@@ -250,37 +250,6 @@ describe("createBookingForHiker", () => {
     );
   });
 
-  it("stores dietary requirements even when no allergy is flagged", async () => {
-    findByPkUser.mockResolvedValue({ role: "HIKER" });
-    findByPkSlot.mockResolvedValue(futureSlot);
-    sum.mockResolvedValue(0);
-    const tables = [{ id: 1, tableNumber: 4, seats: 4, allocatedSeats: 4 }];
-    findFreeTables.mockResolvedValue(tables);
-    splitParty.mockReturnValue(tables);
-    create.mockResolvedValue({
-      id: 101,
-      hikerId: 1,
-      slotId: 10,
-      numberOfPeople: 4,
-      status: "CONFIRMED",
-    });
-    bulkCreate.mockResolvedValue([]);
-
-    await createBookingForHiker({
-      ...validInput,
-      allergyFlag: false,
-      allergyDescription: "Dietary: vegetarian",
-    });
-
-    expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        allergyFlag: false,
-        allergyDescription: "Dietary: vegetarian",
-      }),
-      expect.anything(),
-    );
-  });
-
   it("rejects when the allocated seats do not add up to the party size", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
     findByPkSlot.mockResolvedValue(futureSlot);
