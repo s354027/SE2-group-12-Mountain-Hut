@@ -16,7 +16,7 @@ export default function RequirementsList({
         >
           <div className="party-requirement-details">
             <span>{requirement.description}</span>
-                        {requirement.isAllergy && (
+                        {requirement.allergies && (
               <span className="allergy-flag">Allergy</span>
             )}
           </div>
