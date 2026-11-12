@@ -7,12 +7,12 @@ export default function RequirementsModal({
   showRequirementsModal,
 }) {
   const [description, setDescription] = useState("");
-  const [isAllergy, setIsAllergy] = useState(false);
+  const [allergies, setAllergies] = useState(false);
 
   useEffect(() => {
     if (showRequirementsModal) {
       setDescription(initialRequirement?.description ?? "");
-      setIsAllergy(initialRequirement?.isAllergy ?? false);
+      setAllergies(initialRequirement?.allergies ?? false);
     }
   }, [initialRequirement, showRequirementsModal]);
 
@@ -23,7 +23,7 @@ export default function RequirementsModal({
     const trimmedDescription = description.trim();
     if (!trimmedDescription) return;
 
-    onSave({ description: trimmedDescription, isAllergy });
+    onSave({ description: trimmedDescription, allergies });
   }
 
   return (
@@ -73,10 +73,10 @@ export default function RequirementsModal({
                 >
                   <input
                     id="booking-requirement-allergy"
-                    name="isAllergy"
+                    name="allergies"
                     type="checkbox"
-                    checked={isAllergy}
-                    onChange={(event) => setIsAllergy(event.target.checked)}
+                    checked={allergies}
+                    onChange={(event) => setAllergies(event.target.checked)}
                   />
                   This is an allergy (important)
                 </label>
