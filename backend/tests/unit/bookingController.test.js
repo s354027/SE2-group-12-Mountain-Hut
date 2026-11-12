@@ -125,13 +125,18 @@ describe("createBooking", () => {
     createBookingForHiker.mockResolvedValue({ id: 8 });
     const res = mockRes();
 
+    const dietaryRequirements = [
+      { allergies: true, description: "1 vegan, peanut allergy" },
+      { allergies: false, description: "2 vegetarians" },
+    ];
+
     await createBooking(
-      mockReq({ slotId: 1, numberOfPeople: 2, dietaryRequirements: ["vegetarian", "nut allergy"] }),
+      mockReq({ slotId: 1, numberOfPeople: 2, dietaryRequirements }),
       res,
     );
 
     expect(createBookingForHiker).toHaveBeenCalledWith(
-      expect.objectContaining({ dietaryRequirements: ["vegetarian", "nut allergy"] }),
+      expect.objectContaining({ dietaryRequirements }),
     );
     expect(res.status).toHaveBeenCalledWith(201);
   });
@@ -149,16 +154,50 @@ describe("createBooking", () => {
     expect(createBookingForHiker).not.toHaveBeenCalled();
   });
 
-  it("rejects a dietaryRequirements list with a blank entry", async () => {
+  it("rejects a dietaryRequirements entry that is not an object", async () => {
     const res = mockRes();
 
     await createBooking(
-      mockReq({ slotId: 1, numberOfPeople: 2, dietaryRequirements: ["vegetarian", "   "] }),
+      mockReq({ slotId: 1, numberOfPeople: 2, dietaryRequirements: ["vegetarian"] }),
       res,
     );
 
     expect(res.status).toHaveBeenCalledWith(400);
-    expect(res.json).toHaveBeenCalledWith({ error: "Each dietary requirement must be a non-empty string" });
+    expect(res.json).toHaveBeenCalledWith({ error: "Each dietary requirement must be an object" });
+    expect(createBookingForHiker).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry with a non-boolean allergies flag", async () => {
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({
+        slotId: 1,
+        numberOfPeople: 2,
+        dietaryRequirements: [{ allergies: "yes", description: "vegetarian" }],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "Each dietary requirement must have an allergies boolean" });
+    expect(createBookingForHiker).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry with a blank description", async () => {
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({
+        slotId: 1,
+        numberOfPeople: 2,
+        dietaryRequirements: [{ allergies: false, description: "   " }],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "Each dietary requirement must have a non-empty description" });
     expect(createBookingForHiker).not.toHaveBeenCalled();
   });
 

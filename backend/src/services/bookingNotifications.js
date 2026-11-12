@@ -50,11 +50,14 @@ export async function notifyBookingConfirmed(bookingId) {
   const slotStart = formatTimeForEmail(slot.startTime);
 
   // Combine the legacy single allergy description with the new
-  // multiple dietary requirements list (MH-05 improvement) into
-  // the single free-text field the confirmation email displays.
+  // per-subset dietary requirements list (MH-05 improvement) into
+  // the single free-text field the confirmation email displays,
+  // flagging entries that need allergy care.
   const requirements = [
-    ...(booking.allergyFlag && booking.allergyDescription ? [booking.allergyDescription] : []),
-    ...(booking.dietaryRequirements ?? [])
+    ...(booking.allergyFlag && booking.allergyDescription ? [`${booking.allergyDescription} (allergy)`] : []),
+    ...(booking.dietaryRequirements ?? []).map(
+      requirement => requirement.allergies ? `${requirement.description} (allergy)` : requirement.description
+    )
   ];
 
   return sendBookingConfirmation(

@@ -59,7 +59,7 @@ describe("sendBookingNotification", () => {
       "10:00",
       "11:00",
       2,
-      "Peanuts",
+      "Peanuts (allergy)",
     );
   });
 
@@ -96,7 +96,10 @@ describe("sendBookingNotification", () => {
       numberOfPeople: 2,
       allergyFlag: false,
       allergyDescription: null,
-      dietaryRequirements: ["vegetarian", "nut allergy"],
+      dietaryRequirements: [
+        { allergies: true, description: "1 vegan, peanut allergy" },
+        { allergies: false, description: "1 vegetarian" },
+      ],
     });
 
     await expect(notifyBookingConfirmed(bookingId)).resolves.toBe(true);
@@ -108,7 +111,7 @@ describe("sendBookingNotification", () => {
       "10:00",
       "11:00",
       2,
-      "vegetarian, nut allergy",
+      "1 vegan, peanut allergy (allergy), 1 vegetarian",
     );
   });
 
@@ -121,7 +124,7 @@ describe("sendBookingNotification", () => {
       numberOfPeople: 2,
       allergyFlag: true,
       allergyDescription: "Peanuts",
-      dietaryRequirements: ["vegetarian"],
+      dietaryRequirements: [{ allergies: false, description: "2 vegetarians" }],
     });
 
     await expect(notifyBookingConfirmed(bookingId)).resolves.toBe(true);
@@ -133,7 +136,7 @@ describe("sendBookingNotification", () => {
       "10:00",
       "11:00",
       2,
-      "Peanuts, vegetarian",
+      "Peanuts (allergy), 2 vegetarians",
     );
   });
 });

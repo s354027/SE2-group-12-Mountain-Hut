@@ -259,11 +259,35 @@ describe("createBookingForHiker", () => {
     expect(transaction).not.toHaveBeenCalled();
   });
 
-  it("rejects a dietaryRequirements list with a blank entry", async () => {
+  it("rejects a dietaryRequirements entry that is not an object", async () => {
     await expectBookingError(
-      createBookingForHiker({ ...validInput, dietaryRequirements: ["vegetarian", "   "] }),
+      createBookingForHiker({ ...validInput, dietaryRequirements: ["vegetarian"] }),
       400,
-      "Each dietary requirement must be a non-empty string",
+      "Each dietary requirement must be an object",
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry with a non-boolean allergies flag", async () => {
+    await expectBookingError(
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: [{ allergies: "yes", description: "vegetarian" }],
+      }),
+      400,
+      "Each dietary requirement must have an allergies boolean",
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry with a blank description", async () => {
+    await expectBookingError(
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: [{ allergies: false, description: "   " }],
+      }),
+      400,
+      "Each dietary requirement must have a non-empty description",
     );
     expect(transaction).not.toHaveBeenCalled();
   });
@@ -287,11 +311,19 @@ describe("createBookingForHiker", () => {
     await createBookingForHiker({
       ...validInput,
       numberOfPeople: 4,
-      dietaryRequirements: ["  vegetarian  ", "nut allergy"],
+      dietaryRequirements: [
+        { allergies: true, description: "  1 vegan, peanut allergy  " },
+        { allergies: false, description: "2 vegetarians" },
+      ],
     });
 
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ dietaryRequirements: ["vegetarian", "nut allergy"] }),
+      expect.objectContaining({
+        dietaryRequirements: [
+          { allergies: true, description: "1 vegan, peanut allergy" },
+          { allergies: false, description: "2 vegetarians" },
+        ],
+      }),
       expect.anything(),
     );
   });

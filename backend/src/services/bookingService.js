@@ -93,13 +93,30 @@ export async function createBookingForHiker({
         throw new BookingError(400, 'dietaryRequirements must be an array');
     }
 
-    const cleanedDietaryRequirements = dietaryRequirements.map(
-        requirement => (typeof requirement === 'string' ? requirement.trim() : '')
-    );
-
-    if (cleanedDietaryRequirements.some(requirement => !requirement)) {
-        throw new BookingError(400, 'Each dietary requirement must be a non-empty string');
+    if (dietaryRequirements.some(
+        requirement => !requirement || typeof requirement !== 'object' || Array.isArray(requirement)
+    )) {
+        throw new BookingError(400, 'Each dietary requirement must be an object');
     }
+
+    if (dietaryRequirements.some(
+        requirement => typeof requirement.allergies !== 'boolean'
+    )) {
+        throw new BookingError(400, 'Each dietary requirement must have an allergies boolean');
+    }
+
+    if (dietaryRequirements.some(
+        requirement => typeof requirement.description !== 'string' || !requirement.description.trim()
+    )) {
+        throw new BookingError(400, 'Each dietary requirement must have a non-empty description');
+    }
+
+    const cleanedDietaryRequirements = dietaryRequirements.map(
+        requirement => ({
+            allergies: requirement.allergies,
+            description: requirement.description.trim()
+        })
+    );
 
     // All database operations belong to one transaction
     return runBookingTransaction(

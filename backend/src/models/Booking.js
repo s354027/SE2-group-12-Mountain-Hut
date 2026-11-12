@@ -45,7 +45,8 @@ export function defineBooking(sequelize) {
             allowNull: true
         },
 
-        // Free-form list of dietary requirements for the party (MH-05 improvement).
+        // List of requirements for subsets of the party (MH-05 improvement),
+        // each shaped as { allergies: boolean, description: string }.
         // Stored as JSON text since sqlite has no native array column.
         dietaryRequirements: {
             type: DataTypes.TEXT,

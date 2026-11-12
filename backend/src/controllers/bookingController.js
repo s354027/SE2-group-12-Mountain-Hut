@@ -65,10 +65,26 @@ export async function createBooking(req, res) {
   }
 
   if (dietaryRequirements.some(
-    requirement => typeof requirement !== 'string' || !requirement.trim()
+    requirement => !requirement || typeof requirement !== 'object' || Array.isArray(requirement)
   )) {
     return res.status(400).json({
-      error: 'Each dietary requirement must be a non-empty string'
+      error: 'Each dietary requirement must be an object'
+    });
+  }
+
+  if (dietaryRequirements.some(
+    requirement => typeof requirement.allergies !== 'boolean'
+  )) {
+    return res.status(400).json({
+      error: 'Each dietary requirement must have an allergies boolean'
+    });
+  }
+
+  if (dietaryRequirements.some(
+    requirement => typeof requirement.description !== 'string' || !requirement.description.trim()
+  )) {
+    return res.status(400).json({
+      error: 'Each dietary requirement must have a non-empty description'
     });
   }
 
