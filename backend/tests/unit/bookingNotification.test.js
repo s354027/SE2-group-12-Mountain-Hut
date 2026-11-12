@@ -59,7 +59,7 @@ describe("sendBookingNotification", () => {
       "10:00",
       "11:00",
       2,
-      "Peanuts",
+      "Peanuts (allergy)",
     );
   });
 
@@ -84,6 +84,59 @@ describe("sendBookingNotification", () => {
       "11:00",
       2,
       null,
+    );
+  });
+
+  it("includes the dietary requirements list in the email when present", async () => {
+    const bookingId = 1;
+    findByPk.mockResolvedValueOnce({
+      id: bookingId,
+      hiker: { email: "test@test.local", firstName: "John", lastName: "Doe" },
+      slot: { date: "2024-06-01", startTime: "10:00:00", duration: 60 },
+      numberOfPeople: 2,
+      allergyFlag: false,
+      allergyDescription: null,
+      dietaryRequirements: [
+        { allergies: true, description: "1 vegan, peanut allergy" },
+        { allergies: false, description: "1 vegetarian" },
+      ],
+    });
+
+    await expect(notifyBookingConfirmed(bookingId)).resolves.toBe(true);
+    expect(sendBookingConfirmation).toHaveBeenCalledWith(
+      "test@test.local",
+      "John Doe",
+      bookingId,
+      "01/06/2024",
+      "10:00",
+      "11:00",
+      2,
+      "1 vegan, peanut allergy (allergy), 1 vegetarian",
+    );
+  });
+
+  it("combines the legacy allergy description with the dietary requirements list", async () => {
+    const bookingId = 1;
+    findByPk.mockResolvedValueOnce({
+      id: bookingId,
+      hiker: { email: "test@test.local", firstName: "John", lastName: "Doe" },
+      slot: { date: "2024-06-01", startTime: "10:00:00", duration: 60 },
+      numberOfPeople: 2,
+      allergyFlag: true,
+      allergyDescription: "Peanuts",
+      dietaryRequirements: [{ allergies: false, description: "2 vegetarians" }],
+    });
+
+    await expect(notifyBookingConfirmed(bookingId)).resolves.toBe(true);
+    expect(sendBookingConfirmation).toHaveBeenCalledWith(
+      "test@test.local",
+      "John Doe",
+      bookingId,
+      "01/06/2024",
+      "10:00",
+      "11:00",
+      2,
+      "Peanuts (allergy), 2 vegetarians",
     );
   });
 });

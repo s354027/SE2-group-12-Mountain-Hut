@@ -67,7 +67,8 @@ export async function createBookingForHiker({
   slotId,
   numberOfPeople,
   allergyFlag = false,
-  allergyDescription = null
+  allergyDescription = null,
+  dietaryRequirements = []
 }) {
     const { User, Slot, Booking, BookingTable } = models;
 
@@ -87,6 +88,35 @@ export async function createBookingForHiker({
     if (allergyFlag && (typeof allergyDescription !== 'string' || !allergyDescription.trim())) {
         throw new BookingError(400, 'Allergy description is required');
     }
+
+    if (!Array.isArray(dietaryRequirements)) {
+        throw new BookingError(400, 'dietaryRequirements must be an array');
+    }
+
+    if (dietaryRequirements.some(
+        requirement => !requirement || typeof requirement !== 'object' || Array.isArray(requirement)
+    )) {
+        throw new BookingError(400, 'Each dietary requirement must be an object');
+    }
+
+    if (dietaryRequirements.some(
+        requirement => typeof requirement.allergies !== 'boolean'
+    )) {
+        throw new BookingError(400, 'Each dietary requirement must have an allergies boolean');
+    }
+
+    if (dietaryRequirements.some(
+        requirement => typeof requirement.description !== 'string' || !requirement.description.trim()
+    )) {
+        throw new BookingError(400, 'Each dietary requirement must have a non-empty description');
+    }
+
+    const cleanedDietaryRequirements = dietaryRequirements.map(
+        requirement => ({
+            allergies: requirement.allergies,
+            description: requirement.description.trim()
+        })
+    );
 
     // All database operations belong to one transaction
     return runBookingTransaction(
@@ -191,7 +221,8 @@ export async function createBookingForHiker({
                 numberOfPeople,
                 status: 'CONFIRMED',
                 allergyFlag,
-                allergyDescription: allergyFlag ? allergyDescription.trim() : null
+                allergyDescription: allergyFlag ? allergyDescription.trim() : null,
+                dietaryRequirements: cleanedDietaryRequirements
             }, { transaction });
 
             // 9. Save the allocated seats for each table
@@ -214,6 +245,7 @@ export async function createBookingForHiker({
                 slotId: booking.slotId,
                 numberOfPeople: booking.numberOfPeople,
                 status: booking.status,
+                dietaryRequirements: booking.dietaryRequirements,
                 tables: allocatedTables.map(table => ({
                     id: table.id,
                     tableNumber: table.tableNumber,
