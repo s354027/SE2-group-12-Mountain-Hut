@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
+import RequirementsList from "../components/RequirementsList.jsx";
+import RequirementsModal from "../components/RequirementsModal.jsx";
 
 function formatTime(time) {
   return time ? time.slice(0, 5) : "Not available";
@@ -16,7 +18,7 @@ function getSlotEndTime(startTime, endTime, duration) {
   const [hours, minutes] = startTime.split(":").map(Number);
   const end = new Date(2000, 0, 1, hours, minutes);
   end.setMinutes(end.getMinutes() + Number(duration));
-  
+
   return end.toTimeString().slice(0, 5);
 }
 
@@ -27,14 +29,42 @@ export default function Booking() {
   const date = availability?.date ?? state?.date;
   const requestedTime = state?.time;
   const numberOfPeople = availability?.partySize ?? state?.numberOfPeople;
-  const [allergyFlag, setAllergyFlag] = useState(false);
-  const [allergyDescription, setAllergyDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
-  const [confirmedAllergyDescription, setConfirmedAllergyDescription] =
-    useState(null);
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [partyRequirements, setPartyRequirements] = useState([]);
+  const [showRequirementsModal, setShowRequirementsModal] = useState(false);
+  const [editingRequirementIndex, setEditingRequirementIndex] = useState(null);
+
+  const editingRequirement =
+    editingRequirementIndex === null
+      ? null
+      : partyRequirements[editingRequirementIndex];
+
+  function closeRequirementsModal() {
+    setShowRequirementsModal(false);
+    setEditingRequirementIndex(null);
+  }
+
+  function saveRequirement(requirement) {
+    if (editingRequirementIndex === null) {
+      setPartyRequirements((current) => [...current, requirement]);
+    } else {
+      setPartyRequirements((current) =>
+        current.map((item, index) =>
+          index === editingRequirementIndex ? requirement : item,
+        ),
+      );
+    }
+    closeRequirementsModal();
+  }
+
+  function removeRequirement(index) {
+    setPartyRequirements((current) =>
+      current.filter((_, requirementIndex) => requirementIndex !== index),
+    );
+  }
 
   async function confirmBooking() {
     setError(null);
@@ -46,17 +76,11 @@ export default function Booking() {
       await api.post("/bookings", {
         slotId: availability.slotId,
         numberOfPeople: Number(numberOfPeople),
-        allergyFlag,
-        allergyDescription: allergyFlag ? allergyDescription : null,
+        dietaryRequirements: partyRequirements,
       });
       setConfirmation(
         "Your table has been reserved successfully. You will receive a confirmation email.",
       );
-      setConfirmedAllergyDescription(
-        allergyFlag ? allergyDescription.trim() : null,
-      );
-      setAllergyFlag(false);
-      setAllergyDescription("");
     } catch (requestError) {
       if (
         requestError.status === 409 &&
@@ -64,7 +88,9 @@ export default function Booking() {
       ) {
         setError("You already have a booking for this time slot.");
       } else if (requestError.status === 409) {
-        setError("Sorry, the selected table allocation is no longer available. Please check availability again.");
+        setError(
+          "Sorry, the selected table allocation is no longer available. Please check availability again.",
+        );
       } else {
         setError(requestError.message);
       }
@@ -97,7 +123,7 @@ export default function Booking() {
       <p className="booking-intro">
         {confirmation
           ? confirmation
-          : "Review your selected availability and add any allergy information before confirming."}
+          : "Review your booking selection before confirming."}
       </p>
 
       {!availability?.available && (
@@ -150,73 +176,84 @@ export default function Booking() {
                 ))}
               </dd>
             </div>
-            {confirmation && confirmedAllergyDescription && (
-              <div>
-                <dt>Allergy notes</dt>
-                <dd>{confirmedAllergyDescription}</dd>
-              </div>
-            )}
           </dl>
         </div>
       )}
 
-      {!confirmation && (
-        <form onSubmit={handleSubmit}>
-          <fieldset className="allergy-field">
-            <legend>Allergy information</legend>
-            <label className="checkbox-label" htmlFor="booking-allergies">
-              <input
-                id="booking-allergies"
-                name="allergyFlag"
-                type="checkbox"
-                checked={allergyFlag}
-                onChange={(event) => setAllergyFlag(event.target.checked)}
-              />
-              I have allergies or dietary requirements
-            </label>
-            {allergyFlag && (
-              <div className="field">
-                <label htmlFor="booking-allergy-description">
-                  Allergy notes
-                </label>
-                <textarea
-                  id="booking-allergy-description"
-                  name="allergyDescription"
-                  value={allergyDescription}
-                  onChange={(event) =>
-                    setAllergyDescription(event.target.value)
-                  }
-                  rows="3"
-                  required
-                  placeholder="Please describe the allergy or dietary requirement"
-                />
+      {availability?.available && (
+        <>
+          <section className="party-requirements-section">
+            <div className="requirements-heading">
+              <div>
+                <h2>Party requirements</h2>
+                <p className="mt-3">
+                  Add one or more allergies or dietary requirements. Mark allergies so staff
+                  know they are important.
+                </p>
+              </div>
+            </div>
+            <RequirementsList
+              partyRequirements={partyRequirements}
+              onEdit={
+                confirmation
+                  ? undefined
+                  : (index) => {
+                      setEditingRequirementIndex(index);
+                      setShowRequirementsModal(true);
+                    }
+              }
+              onRemove={confirmation ? undefined : removeRequirement}
+            />
+            {!confirmation && (
+              <div className="d-flex justify-content-end">
+                <button
+                  type="button"
+                  className="btn btn-outline-primary mt-3"
+                  onClick={() => {
+                    setEditingRequirementIndex(null);
+                    setShowRequirementsModal(true);
+                  }}
+                >
+                  Add
+                </button>
               </div>
             )}
-          </fieldset>
+          </section>
 
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
+          {!confirmation && (
+            <form onSubmit={handleSubmit}>
+              {error && (
+                <p role="alert" className="form-error">
+                  {error}
+                </p>
+              )}
+              <div className="booking-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => navigate("/search")}
+                >
+                  Change availability
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={submitting || !availability?.available}
+                >
+                  {submitting ? "Booking..." : "Confirm booking"}
+                </button>
+              </div>
+            </form>
           )}
-          <div className="booking-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => navigate("/search")}
-            >
-              Change availability
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={submitting || !availability?.available}
-            >
-              {submitting ? "Booking..." : "Confirm booking"}
-            </button>
-          </div>
-        </form>
+        </>
       )}
+
+      <RequirementsModal
+        initialRequirement={editingRequirement}
+        onClose={closeRequirementsModal}
+        onSave={saveRequirement}
+        showRequirementsModal={showRequirementsModal}
+      />
 
       {showConfirmationDialog && (
         <>
