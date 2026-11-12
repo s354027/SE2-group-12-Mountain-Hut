@@ -1,5 +1,23 @@
 import { Op } from 'sequelize';
 
+function timeToMinutes(time) {
+  const [hours, minutes, seconds = 0] = String(time)
+    .split(':')
+    .map(Number);
+
+  return hours * 60 + minutes + seconds / 60;
+}
+
+function slotsOverlap(startTimeA, durationA, startTimeB, durationB) {
+  const startA = timeToMinutes(startTimeA);
+  const endA = startA + Number(durationA);
+
+  const startB = timeToMinutes(startTimeB);
+  const endB = startB + Number(durationB);
+
+  return startA < endB && startB < endA;
+}
+
 export function createSlotController({ Slot, DiningTable, Booking }) {
   /**
    * GET /api/slots
@@ -94,6 +112,23 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
     }
 
     try {
+      const sameDaySlots = await Slot.findAll({ //find all the slots that share the same date with the new one
+        where: { date }
+      });
+
+      const hasOverlap = sameDaySlots.some((slot) => //check for overlaps
+        slotsOverlap(
+          startTime,
+          parsedDuration,
+          slot.startTime,
+          slot.duration
+        )
+      );
+
+      if (hasOverlap) {
+        return res.status(409).json({error: 'Slot overlaps with an existing slot'});
+      }
+
       let tables = [];
       let capacity = totalCapacity ? Number(totalCapacity) : 0;
 
@@ -196,6 +231,28 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
         updateData.meal = normalizedMeal;
       }
       if (status) updateData.status = status;
+
+      // reject updates that would overlap another slot
+      const finalDate = date ?? slot.date;
+      const finalStartTime = startTime ?? slot.startTime;
+      const finalDuration = updateData.duration ?? slot.duration;
+
+      const sameDaySlots = await Slot.findAll({where: { date: finalDate }});
+
+      const hasOverlap = sameDaySlots
+        .filter((existingSlot) => String(existingSlot.id) !== String(slot.id))
+        .some((existingSlot) =>
+          slotsOverlap(
+            finalStartTime,
+            finalDuration,
+            existingSlot.startTime,
+            existingSlot.duration
+          )
+        );
+
+      if (hasOverlap) {
+        return res.status(409).json({error: 'Slot overlaps with an existing slot'});
+      }
 
       // Updating tables if provided with a tableIds array
       if (Array.isArray(tableIds)) {
