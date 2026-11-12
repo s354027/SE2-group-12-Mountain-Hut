@@ -1,4 +1,4 @@
-import {createBookingForHiker, BookingError} from '../services/bookingService.js';
+import {createBookingForHiker, cancelBooking as cancelBookingService, BookingError} from '../services/bookingService.js';
 
 import {notifyBookingConfirmed} from '../services/bookingNotifications.js';
 
@@ -131,6 +131,38 @@ export async function createBooking(req, res) {
 
     return res.status(500).json({
       error: 'Unable to create booking'
+    });
+  }
+}
+
+export async function cancelBooking(req, res) {
+  const bookingId = Number(req.params.id);
+
+  if (!Number.isSafeInteger(bookingId) || bookingId < 1) {
+    return res.status(400).json({
+      error: 'bookingId must be a positive integer'
+    });
+  }
+
+  try {
+    const booking = await cancelBookingService({
+      bookingId
+    });
+
+    return res.status(200).json(booking);
+
+  } 
+  catch (error) {
+    if (error instanceof BookingError) {
+      return res.status(error.status).json({
+        error: error.message
+      });
+    }
+
+    console.error('Booking cancellation failed:', error);
+
+    return res.status(500).json({
+      error: 'Unable to cancel booking'
     });
   }
 }
