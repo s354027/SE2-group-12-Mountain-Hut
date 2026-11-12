@@ -250,6 +250,84 @@ describe("createBookingForHiker", () => {
     );
   });
 
+  it("rejects a non-array dietaryRequirements", async () => {
+    await expectBookingError(
+      createBookingForHiker({ ...validInput, dietaryRequirements: "vegetarian" }),
+      400,
+      "dietaryRequirements must be an array",
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry that is not an object", async () => {
+    await expectBookingError(
+      createBookingForHiker({ ...validInput, dietaryRequirements: ["vegetarian"] }),
+      400,
+      "Each dietary requirement must be an object",
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry with a non-boolean allergies flag", async () => {
+    await expectBookingError(
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: [{ allergies: "yes", description: "vegetarian" }],
+      }),
+      400,
+      "Each dietary requirement must have an allergies boolean",
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry with a blank description", async () => {
+    await expectBookingError(
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: [{ allergies: false, description: "   " }],
+      }),
+      400,
+      "Each dietary requirement must have a non-empty description",
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("trims and persists the dietary requirements list", async () => {
+    findByPkUser.mockResolvedValue({ role: "HIKER" });
+    findByPkSlot.mockResolvedValue(futureSlot);
+    sum.mockResolvedValue(0);
+    const tables = [{ id: 1, tableNumber: 4, seats: 4, allocatedSeats: 4 }];
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue(tables);
+    create.mockResolvedValue({
+      id: 101,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 4,
+      status: "CONFIRMED",
+    });
+    bulkCreate.mockResolvedValue([]);
+
+    await createBookingForHiker({
+      ...validInput,
+      numberOfPeople: 4,
+      dietaryRequirements: [
+        { allergies: true, description: "  1 vegan, peanut allergy  " },
+        { allergies: false, description: "2 vegetarians" },
+      ],
+    });
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dietaryRequirements: [
+          { allergies: true, description: "1 vegan, peanut allergy" },
+          { allergies: false, description: "2 vegetarians" },
+        ],
+      }),
+      expect.anything(),
+    );
+  });
+
   it("rejects when the allocated seats do not add up to the party size", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
     findByPkSlot.mockResolvedValue(futureSlot);

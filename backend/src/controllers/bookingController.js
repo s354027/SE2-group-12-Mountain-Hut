@@ -20,7 +20,8 @@ export async function createBooking(req, res) {
     slotId,
     numberOfPeople,
     allergyFlag = false,
-    allergyDescription = null
+    allergyDescription = null,
+    dietaryRequirements = []
   } = body;
 
   // 2. Validate mandatory fields
@@ -57,6 +58,36 @@ export async function createBooking(req, res) {
     });
   }
 
+  if (!Array.isArray(dietaryRequirements)) {
+    return res.status(400).json({
+      error: 'dietaryRequirements must be an array'
+    });
+  }
+
+  if (dietaryRequirements.some(
+    requirement => !requirement || typeof requirement !== 'object' || Array.isArray(requirement)
+  )) {
+    return res.status(400).json({
+      error: 'Each dietary requirement must be an object'
+    });
+  }
+
+  if (dietaryRequirements.some(
+    requirement => typeof requirement.allergies !== 'boolean'
+  )) {
+    return res.status(400).json({
+      error: 'Each dietary requirement must have an allergies boolean'
+    });
+  }
+
+  if (dietaryRequirements.some(
+    requirement => typeof requirement.description !== 'string' || !requirement.description.trim()
+  )) {
+    return res.status(400).json({
+      error: 'Each dietary requirement must have a non-empty description'
+    });
+  }
+
   try {
     // 4. Create booking using authenticated user ID
     const booking = await createBookingForHiker({
@@ -66,7 +97,8 @@ export async function createBooking(req, res) {
       allergyFlag,
       allergyDescription: allergyFlag
         ? description
-        : null
+        : null,
+      dietaryRequirements
     });
 
     // 5. Send confirmation after successful commit
