@@ -76,7 +76,7 @@ export default function Booking() {
       await api.post("/bookings", {
         slotId: availability.slotId,
         numberOfPeople: Number(numberOfPeople),
-        partyRequirements,
+        dietaryRequirements: partyRequirements,
       });
       setConfirmation(
         "Your table has been reserved successfully. You will receive a confirmation email.",
