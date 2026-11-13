@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import { useAuth } from "../auth/AuthContext.jsx";
@@ -36,6 +36,16 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { user } = useAuth();
+  const resultsSectionRef = useRef(null);
+
+  useEffect(() => {
+    if ((result || error) && resultsSectionRef.current) {
+      resultsSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [result, error]);
 
   async function handleSearch(event) {
     event.preventDefault();
@@ -81,6 +91,14 @@ export default function Search() {
 
   return (
     <div className="field-guide-search">
+      <div className="booking-progress" aria-label="Booking process">
+        <span className="progress-step current">1. Find a table</span>
+        <span className="progress-line" />
+        <span className="progress-step">2. Review booking</span>
+        <span className="progress-line" />
+        <span className="progress-step">3. Confirmed</span>
+      </div>
+
       <section className="field-guide-hero">
         <div className="field-guide-hero-copy">
           <span className="field-guide-kicker">
@@ -187,6 +205,7 @@ export default function Search() {
         </div>
       </section>
 
+      <div ref={resultsSectionRef}>
       {error && (
         <div className="guide-message guide-error" role="alert">
           <strong>We couldn't complete that search.</strong>
@@ -281,6 +300,7 @@ export default function Search() {
           )}
         </section>
       )}
+      </div>
     </div>
   );
 }
