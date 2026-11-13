@@ -1,22 +1,5 @@
 import { Op } from 'sequelize';
-
-function timeToMinutes(time) {
-  const [hours, minutes, seconds = 0] = String(time)
-    .split(':')
-    .map(Number);
-
-  return hours * 60 + minutes + seconds / 60;
-}
-
-function slotsOverlap(startTimeA, durationA, startTimeB, durationB) {
-  const startA = timeToMinutes(startTimeA);
-  const endA = startA + Number(durationA);
-
-  const startB = timeToMinutes(startTimeB);
-  const endB = startB + Number(durationB);
-
-  return startA < endB && startB < endA;
-}
+import { findOverlappingSlot } from '../services/slotOverlap.js';
 
 export function createSlotController({ Slot, DiningTable, Booking }) {
   /**
@@ -116,16 +99,12 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
         where: { date }
       });
 
-      const hasOverlap = sameDaySlots.some((slot) => //check for overlaps
-        slotsOverlap(
-          startTime,
-          parsedDuration,
-          slot.startTime,
-          slot.duration
-        )
+      const overlapping = findOverlappingSlot(
+        { startTime, duration: parsedDuration },
+        sameDaySlots
       );
 
-      if (hasOverlap) {
+      if (overlapping) {
         return res.status(409).json({error: 'Slot overlaps with an existing slot'});
       }
 
@@ -239,18 +218,13 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
 
       const sameDaySlots = await Slot.findAll({where: { date: finalDate }});
 
-      const hasOverlap = sameDaySlots
-        .filter((existingSlot) => String(existingSlot.id) !== String(slot.id))
-        .some((existingSlot) =>
-          slotsOverlap(
-            finalStartTime,
-            finalDuration,
-            existingSlot.startTime,
-            existingSlot.duration
-          )
-        );
+      const overlapping = findOverlappingSlot(
+        { startTime: finalStartTime, duration: finalDuration },
+        sameDaySlots,
+        slot.id
+      );
 
-      if (hasOverlap) {
+      if (overlapping) {
         return res.status(409).json({error: 'Slot overlaps with an existing slot'});
       }
 
