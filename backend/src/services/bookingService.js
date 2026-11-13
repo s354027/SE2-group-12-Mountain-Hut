@@ -255,3 +255,34 @@ export async function createBookingForHiker({
         }
     );
 }
+
+export async function cancelBooking({bookingId}) {
+  const { Booking } = models;
+
+  if (!Number.isSafeInteger(bookingId) || bookingId < 1) {
+    throw new BookingError(400, 'Invalid booking ID');
+  }
+
+  const booking = await Booking.findByPk(bookingId);
+
+  if (!booking) {
+    throw new BookingError(404, 'Booking not found');
+  }
+
+  if (!['PENDING', 'CONFIRMED'].includes(booking.status)) { // can be cancelled only if it is pending or confirmed
+    throw new BookingError(
+      409,
+      'Booking is not active'
+    );
+  }
+
+  await booking.update({status: 'CANCELLED'});
+
+  return {
+    id: booking.id,
+    hikerId: booking.hikerId,
+    slotId: booking.slotId,
+    numberOfPeople: booking.numberOfPeople,
+    status: booking.status
+  };
+}
