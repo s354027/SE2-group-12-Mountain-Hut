@@ -1,5 +1,6 @@
 
 import { Link } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext.jsx';
 
 // Fictional hut for the Mountain Hut university project.
 // The surrounding attractions are real, but the hut and its
@@ -36,7 +37,136 @@ const nearbyHighlights = [
   },
 ];
 
+// Signed-in homepage content per role (MH-85). Guests keep the full
+// marketing page below; logged-in users get a short, role-relevant
+// landing instead, pointing at the routes already available to them.
+const roleHomeContent = {
+  HIKER: {
+    eyebrow: 'WELCOME BACK',
+    title: 'Ready for your next stop at the hut?',
+    description:
+      'Check table availability and book your lunch or dinner at Mountain Hut.',
+    primaryTo: '/search',
+    primaryLabel: 'Check availability',
+    cards: [
+      {
+        number: '01',
+        title: 'Find a table',
+        description: 'Search available slots by date and party size.',
+      },
+      {
+        number: '02',
+        title: 'Book your visit',
+        description:
+          'Reserve a table in a few steps, with any dietary requirements.',
+      },
+      {
+        number: '03',
+        title: 'Plan ahead',
+        description: 'Bookings close two hours before each slot starts.',
+      },
+    ],
+  },
+  EMPLOYEE: {
+    eyebrow: 'STAFF AREA',
+    title: 'Manage today’s slots and tables',
+    description:
+      'Keep slots, tables and bookings up to date for the hut’s service.',
+    primaryTo: '/staff/slots',
+    primaryLabel: 'Manage slots',
+    cards: [
+      {
+        number: '01',
+        title: 'Slots',
+        description: 'Open, close and review the lunch and dinner slots.',
+      },
+      {
+        number: '02',
+        title: 'Tables',
+        description: 'Manage the dining tables available for each slot.',
+      },
+      {
+        number: '03',
+        title: 'Bookings',
+        description:
+          'Keep track of party sizes and dietary requirements for each slot.',
+      },
+    ],
+  },
+  WARDEN: {
+    eyebrow: 'WARDEN AREA',
+    title: 'Run the hut, from slots to staff',
+    description:
+      'Manage meal slots and tables, and bring new staff members on board.',
+    primaryTo: '/staff/slots',
+    primaryLabel: 'Manage slots',
+    secondaryTo: '/admin/staff/new',
+    secondaryLabel: 'Add new staff',
+    cards: [
+      {
+        number: '01',
+        title: 'Slots & tables',
+        description: 'Open, close and review meal slots and seating.',
+      },
+      {
+        number: '02',
+        title: 'New staff',
+        description: 'Create accounts for new employees from the admin page.',
+      },
+      {
+        number: '03',
+        title: 'Oversight',
+        description: 'Keep the hut’s daily operations running smoothly.',
+      },
+    ],
+  },
+};
+
+function SignedInHome({ role }) {
+  const content = roleHomeContent[role];
+
+  return (
+    <div className="home-page home-page-simple">
+      <section className="home-welcome" aria-labelledby="home-title">
+        <span className="home-welcome-eyebrow">{content.eyebrow}</span>
+
+        <h1 id="home-title">{content.title}</h1>
+
+        <p>{content.description}</p>
+
+        <div className="home-intro-actions">
+          <Link className="home-primary-link" to={content.primaryTo}>
+            {content.primaryLabel} <span aria-hidden="true">↗</span>
+          </Link>
+
+          {content.secondaryTo && (
+            <Link className="home-secondary-link" to={content.secondaryTo}>
+              {content.secondaryLabel} <span aria-hidden="true">↗</span>
+            </Link>
+          )}
+        </div>
+      </section>
+
+      <div className="home-simple-info">
+        {content.cards.map((card) => (
+          <article key={card.number}>
+            <span className="home-info-number">{card.number}</span>
+            <h2>{card.title}</h2>
+            <p>{card.description}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
+  const { user } = useAuth();
+
+  if (user && roleHomeContent[user.role]) {
+    return <SignedInHome role={user.role} />;
+  }
+
   return (
     <div className="home-page home-about-page">
       <section
