@@ -725,6 +725,25 @@ body {
   letter-spacing: 0.14em;
   writing-mode: vertical-rl;
 }
+/* MH-86 — auth pages reuse the Availability page illustration.
+   The form sits flush on the hero panel, like the search hero's
+   copy column, instead of floating as a separate card. The
+   illustration is an SVG that scales to cover whatever height the
+   form gives the row (like a photo with object-fit: cover), instead
+   of the fixed-position decorative version used on the search page. */
+.auth-landscape-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.auth-page .field-guide-hero .auth-card {
+  max-width: 440px;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+}
 .field-guide-search-panel {
   margin-top: 24px;
   padding: 30px 34px 22px;
@@ -1298,6 +1317,25 @@ button:active:not(:disabled) {
 }
 .field {
   margin-bottom: 19px;
+}
+/* MH-86 — pairs fields side by side so longer forms (e.g.
+   registration) stay closer in height to the reused illustration. */
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 16px;
+}
+.field-row .field label {
+  min-height: 2.6em;
+  line-height: 1.3;
+}
+@media (max-width: 600px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+  .field-row .field label {
+    min-height: 0;
+  }
 }
 .field label {
   color: var(--alpine-forest);
