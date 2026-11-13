@@ -537,6 +537,11 @@ body {
   margin: 0 auto;
   color: var(--guide-ink);
 }
+/* MH-87 — surfaces the same booking-progress steps used on the
+   booking page, so the multi-step flow is clear from the start. */
+.field-guide-search > .booking-progress {
+  margin: 0 0 18px;
+}
 .field-guide-hero {
   position: relative;
   display: grid;
