@@ -177,3 +177,41 @@ export const sendBookingConfirmation = async (
   `;
   return await sendEmail(to, subject, html);
 };
+
+/**
+ * Sends the password recovery email (MH-07).
+ * @param {string} to The recipient's email address.
+ * @param {string} username The name of the user.
+ * @param {string} resetLink The single-use link to reset the password.
+ * @returns {Promise<boolean>} Returns true if the email was sent successfully, false otherwise.
+ */
+export const sendPasswordResetEmail = async (to, username, resetLink) => {
+  if (typeof to !== "string" || !to.trim()) {
+    throw new TypeError("to must be a non-empty email address");
+  }
+  if (typeof username !== "string" || !username.trim()) {
+    throw new TypeError("username must be a non-empty string");
+  }
+  if (typeof resetLink !== "string" || !resetLink.trim()) {
+    throw new TypeError("resetLink must be a non-empty string");
+  }
+
+  const subject = "Reset your Mountain Hut password";
+
+  const html = `
+  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 28px auto 0; padding: 28px;">
+    <h1 style="color: #1a3a2a; margin-top: 0;">Password reset</h1>
+    <p>Dear ${username},</p>
+    <p>We received a request to reset the password of your Mountain Hut account.</p>
+    <p style="margin: 24px 0;">
+      <a href="${resetLink}" style="background-color: #1a3a2a; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold;">Choose a new password</a>
+    </p>
+    <p>The link can be used only once and expires in 24 hours.</p>
+    <p>If you did not request a password reset, you can safely ignore this email.</p>
+    <p><strong>The Mountain Hut Team</strong></p>
+    <hr style="border: none; border-top: 1px solid #e2e8e4; margin: 20px 0; width: 100%">
+    <p style="font-size: 12px; margin: 0; color: #777; text-align: center;">This is an automated email.</p>
+  </div>
+  `;
+  return await sendEmail(to, subject, html);
+};
