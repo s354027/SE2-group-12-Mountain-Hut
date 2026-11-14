@@ -2,6 +2,7 @@ import { Op, Transaction } from 'sequelize';
 import { sequelize, models } from '../db/index.js';
 import { findFreeTables } from './tableAvailability.js';
 import { splitParty } from './partySplit.js';
+import { generateRandomPassword, generateResetToken, hashPassword } from './authService.js';
 
 export class BookingError extends Error {
   constructor(status, message) {
@@ -62,17 +63,22 @@ async function runBookingTransaction(callback) {
 }
 
 
-export async function createBookingForHiker({
-  hikerId,
-  slotId,
-  numberOfPeople,
-  allergyFlag = false,
-  allergyDescription = null,
-  dietaryRequirements = []
-}) {
-    const { User, Slot, Booking, BookingTable } = models;
+const ACTIVE_STATUSES = ['PENDING', 'CONFIRMED'];
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    // Basic input validation
+/**
+ * Validates the booking details shared by every booking flow
+ * (party size, slot, allergy flag and MH-05 party requirements).
+ *
+ * @returns {Array<{allergies: boolean, description: string}>} cleaned requirements
+ */
+function validateBookingDetails({
+    slotId,
+    numberOfPeople,
+    allergyFlag,
+    allergyDescription,
+    dietaryRequirements
+}) {
     if (!Number.isSafeInteger(numberOfPeople) || numberOfPeople < 1) {
         throw new BookingError(400, 'Invalid party size');
     }
@@ -111,12 +117,168 @@ export async function createBookingForHiker({
         throw new BookingError(400, 'Each dietary requirement must have a non-empty description');
     }
 
-    const cleanedDietaryRequirements = dietaryRequirements.map(
+    return dietaryRequirements.map(
         requirement => ({
             allergies: requirement.allergies,
             description: requirement.description.trim()
         })
     );
+}
+
+/**
+ * Loads the slot and checks that it can be booked.
+ */
+async function findOpenSlot(slotId, transaction) {
+    const { Slot } = models;
+
+    const slot = await Slot.findByPk(slotId, { transaction });
+
+    if (!slot) {
+        throw new BookingError(404, 'Slot not found');
+    }
+
+    if (slot.status !== 'OPEN') {
+        throw new BookingError(409, 'Slot is not available');
+    }
+
+    return slot;
+}
+
+function getSlotStart(slot) {
+    return new Date(`${slot.date}T${slot.startTime}`);
+}
+
+/**
+ * Applies the MH-01 rules (one booking per slot, capacity, table assignment)
+ * and saves the booking with its allocated seats.
+ * Must run inside a booking transaction.
+ */
+async function allocateAndCreateBooking(transaction, {
+    hikerId,
+    slot,
+    numberOfPeople,
+    allergyFlag,
+    allergyDescription,
+    dietaryRequirements
+}) {
+    const { Booking, BookingTable } = models;
+    const slotId = slot.id;
+
+    // 1. Verify that the hiker does not already have an active booking for this slot
+    const existingBooking = await Booking.findOne({
+        where: {
+            hikerId,
+            slotId,
+            status: {
+                [Op.in]: ACTIVE_STATUSES
+            }
+        },
+        transaction
+    });
+
+    if (existingBooking) {
+        throw new BookingError(
+            409,
+            'Hiker already has a booking for this slot'
+        );
+    }
+
+    // 2. Verify overall slot capacity
+    const bookedSeats = await Booking.sum(
+        'numberOfPeople',
+        {
+            where: {
+                slotId,
+                status: {
+                    [Op.in]: ACTIVE_STATUSES
+                }
+            },
+            transaction
+        }
+    );
+
+    const remainingCapacity = slot.totalCapacity - (bookedSeats ?? 0);
+
+    if (numberOfPeople > remainingCapacity) {
+        throw new BookingError(409, 'Insufficient slot capacity');
+    }
+
+    // 3. Retrieve available tables
+    const freeTables = await findFreeTables(slotId, { transaction });
+
+    // 4. Calculate optimal table allocation
+    const allocatedTables = splitParty(numberOfPeople, freeTables);
+
+    if (!allocatedTables || allocatedTables.length === 0) {
+        throw new BookingError(
+            409, 'Not enough available table seats'
+        );
+    }
+
+    const allocatedSeats = allocatedTables.reduce((sum, table) => sum + table.allocatedSeats, 0);
+
+    if (allocatedSeats !== numberOfPeople || allocatedTables.some(table => !Number.isSafeInteger(table.allocatedSeats) || table.allocatedSeats < 1)) {
+        throw new Error('Invalid table allocation');
+    }
+
+    // 5. Create the booking
+    const booking = await Booking.create({
+        hikerId,
+        slotId,
+        numberOfPeople,
+        status: 'CONFIRMED',
+        allergyFlag,
+        allergyDescription: allergyFlag ? allergyDescription.trim() : null,
+        dietaryRequirements
+    }, { transaction });
+
+    // 6. Save the allocated seats for each table
+    await BookingTable.bulkCreate(
+        allocatedTables.map(table => ({
+            bookingId: booking.id,
+            tableId: table.id,
+            allocatedSeats: table.allocatedSeats
+        })),
+        {
+            transaction,
+            validate: true
+        }
+    );
+
+    // 7. Return the created booking
+    return {
+        id: booking.id,
+        hikerId: booking.hikerId,
+        slotId: booking.slotId,
+        numberOfPeople: booking.numberOfPeople,
+        status: booking.status,
+        dietaryRequirements: booking.dietaryRequirements,
+        tables: allocatedTables.map(table => ({
+            id: table.id,
+            tableNumber: table.tableNumber,
+            allocatedSeats: table.allocatedSeats
+        }))
+    };
+}
+
+export async function createBookingForHiker({
+  hikerId,
+  slotId,
+  numberOfPeople,
+  allergyFlag = false,
+  allergyDescription = null,
+  dietaryRequirements = []
+}) {
+    const { User } = models;
+
+    // Basic input validation
+    const cleanedDietaryRequirements = validateBookingDetails({
+        slotId,
+        numberOfPeople,
+        allergyFlag,
+        allergyDescription,
+        dietaryRequirements
+    });
 
     // All database operations belong to one transaction
     return runBookingTransaction(
@@ -132,22 +294,11 @@ export async function createBookingForHiker({
             }
 
             // 2. Verify the slot
-            const slot = await Slot.findByPk(slotId, {
-                transaction
-            });
-
-            if (!slot) {
-                throw new BookingError(404, 'Slot not found');
-            }
-
-            if (slot.status !== 'OPEN') {
-                throw new BookingError(409, 'Slot is not available');
-            }
+            const slot = await findOpenSlot(slotId, transaction);
 
             // 3. Verify booking deadline:
             // hikers can book only until 2 hours before the slot starts
-
-            const slotStart = new Date(`${slot.date}T${slot.startTime}`);
+            const slotStart = getSlotStart(slot);
             const twoHoursMs = 2 * 60 * 60 * 1000;
 
             if (Number.isNaN(slotStart.getTime()) || slotStart.getTime() - Date.now() < twoHoursMs) {
@@ -157,100 +308,223 @@ export async function createBookingForHiker({
                 );
             }
 
-            // 4. Verify that the hiker does not already have an active booking for this slot
-            const existingBooking = await Booking.findOne({
-                where: {
-                    hikerId,
-                    slotId,
-                    status: {
-                        [Op.in]: ['PENDING', 'CONFIRMED']
-                    }
-                },
-                transaction
+            // 4. Capacity check, table assignment and creation (MH-01 rules)
+            return allocateAndCreateBooking(transaction, {
+                hikerId,
+                slot,
+                numberOfPeople,
+                allergyFlag,
+                allergyDescription,
+                dietaryRequirements: cleanedDietaryRequirements
+            });
+        }
+    );
+}
+
+function optionalTrimmedString(value, fieldName) {
+    if (value === undefined || value === null) {
+        return null;
+    }
+
+    if (typeof value !== 'string') {
+        throw new BookingError(400, `${fieldName} must be a string`);
+    }
+
+    return value.trim() || null;
+}
+
+function requiredTrimmedString(value, fieldName) {
+    if (typeof value !== 'string' || !value.trim()) {
+        throw new BookingError(400, `${fieldName} is required`);
+    }
+
+    return value.trim();
+}
+
+/**
+ * Validates the hiker part of a staff booking request (MH-07).
+ *
+ * Supported modes:
+ * - EXISTING: { mode, id } hiker already registered in the system
+ * - FULL:     { mode, firstName, lastName, email, phone, notes?, emergencyContact? }
+ *             creates a regular hiker profile with a random password
+ * - QUICK:    { mode, firstName, lastName?, phone? }
+ *             creates a temporary hiker that cannot log in
+ */
+function validateStaffHiker(hiker) {
+    if (!hiker || typeof hiker !== 'object' || Array.isArray(hiker)) {
+        throw new BookingError(400, 'Hiker information is required');
+    }
+
+    switch (hiker.mode) {
+        case 'EXISTING': {
+            if (!Number.isSafeInteger(hiker.id) || hiker.id < 1) {
+                throw new BookingError(400, 'Invalid hiker ID');
+            }
+            return { mode: 'EXISTING', id: hiker.id };
+        }
+
+        case 'FULL': {
+            const email = requiredTrimmedString(hiker.email, 'Email').toLowerCase();
+
+            if (!EMAIL_REGEX.test(email)) {
+                throw new BookingError(400, 'Invalid email format');
+            }
+
+            return {
+                mode: 'FULL',
+                firstName: requiredTrimmedString(hiker.firstName, 'First name'),
+                lastName: requiredTrimmedString(hiker.lastName, 'Last name'),
+                email,
+                phone: requiredTrimmedString(hiker.phone, 'Mobile number'),
+                notes: optionalTrimmedString(hiker.notes, 'Notes'),
+                emergencyContact: optionalTrimmedString(hiker.emergencyContact, 'Emergency contact')
+            };
+        }
+
+        case 'QUICK': {
+            return {
+                mode: 'QUICK',
+                firstName: requiredTrimmedString(hiker.firstName, 'Name'),
+                lastName: optionalTrimmedString(hiker.lastName, 'Last name') ?? '',
+                phone: optionalTrimmedString(hiker.phone, 'Phone')
+            };
+        }
+
+        default:
+            throw new BookingError(400, 'Hiker mode must be EXISTING, FULL or QUICK');
+    }
+}
+
+/**
+ * Finds or creates the hiker of a staff booking, inside the booking
+ * transaction so that a refused booking never leaves an orphan profile.
+ */
+async function resolveStaffHiker(hikerData, transaction) {
+    const { User } = models;
+
+    if (hikerData.mode === 'EXISTING') {
+        const hiker = await User.findByPk(hikerData.id, { transaction });
+
+        if (!hiker || hiker.role !== 'HIKER') {
+            throw new BookingError(404, 'Hiker not found');
+        }
+
+        return { hiker, generatedPassword: null };
+    }
+
+    if (hikerData.mode === 'FULL') {
+        const existingUser = await User.findOne({
+            where: { email: hikerData.email },
+            transaction
+        });
+
+        if (existingUser) {
+            throw new BookingError(409, 'A user with this email is already registered');
+        }
+
+        // Random password communicated to the hiker (e.g. verbally),
+        // to be changed at the next login
+        const generatedPassword = generateRandomPassword();
+
+        const hiker = await User.create({
+            firstName: hikerData.firstName,
+            lastName: hikerData.lastName,
+            email: hikerData.email,
+            phone: hikerData.phone,
+            notes: hikerData.notes,
+            emergencyContact: hikerData.emergencyContact,
+            passwordHash: await hashPassword(generatedPassword),
+            mustChangePassword: true,
+            isTemporary: false,
+            role: 'HIKER'
+        }, { transaction });
+
+        return { hiker, generatedPassword };
+    }
+
+    // QUICK: temporary hiker, not entitled to log in.
+    // The password hash is derived from a random value nobody knows.
+    const hiker = await User.create({
+        firstName: hikerData.firstName,
+        lastName: hikerData.lastName,
+        email: null,
+        phone: hikerData.phone,
+        passwordHash: await hashPassword(generateResetToken()),
+        isTemporary: true,
+        mustChangePassword: false,
+        role: 'HIKER'
+    }, { transaction });
+
+    return { hiker, generatedPassword: null };
+}
+
+/**
+ * Creates a booking entered by an employee on behalf of a hiker (MH-07),
+ * e.g. for reservations received by phone, message or in person.
+ *
+ * The only time constraint is that the booking cannot be made after
+ * the beginning of the time slot. All MH-01 rules still apply.
+ *
+ * @returns {Promise<{booking: Object, hiker: Object, generatedPassword: string|null}>}
+ */
+export async function createBookingByStaff({
+    hiker,
+    slotId,
+    numberOfPeople,
+    allergyFlag = false,
+    allergyDescription = null,
+    dietaryRequirements = []
+}) {
+    const hikerData = validateStaffHiker(hiker);
+
+    const cleanedDietaryRequirements = validateBookingDetails({
+        slotId,
+        numberOfPeople,
+        allergyFlag,
+        allergyDescription,
+        dietaryRequirements
+    });
+
+    return runBookingTransaction(
+        async transaction => {
+
+            // 1. Verify the slot
+            const slot = await findOpenSlot(slotId, transaction);
+
+            // 2. Employee-made reservations cannot be made
+            // after the beginning of the time slot
+            const slotStart = getSlotStart(slot);
+
+            if (Number.isNaN(slotStart.getTime()) || Date.now() >= slotStart.getTime()) {
+                throw new BookingError(409, 'Slot has already started');
+            }
+
+            // 3. Find or create the hiker
+            const { hiker: bookingHiker, generatedPassword } =
+                await resolveStaffHiker(hikerData, transaction);
+
+            // 4. Capacity check, table assignment and creation (MH-01 rules)
+            const booking = await allocateAndCreateBooking(transaction, {
+                hikerId: bookingHiker.id,
+                slot,
+                numberOfPeople,
+                allergyFlag,
+                allergyDescription,
+                dietaryRequirements: cleanedDietaryRequirements
             });
 
-            if (existingBooking) {
-                throw new BookingError(
-                    409,
-                    'Hiker already has a booking for this slot'
-                );
-            }
-
-            // 5. Verify overall slot capacity
-            const bookedSeats = await Booking.sum(
-                'numberOfPeople',
-                {
-                where: {
-                    slotId,
-                    status: {
-                    [Op.in]: ['PENDING', 'CONFIRMED']
-                    }
-                },
-                transaction
-                }
-            );
-
-            const remainingCapacity = slot.totalCapacity - (bookedSeats ?? 0);
-
-            if (numberOfPeople > remainingCapacity) {
-                throw new BookingError(409, 'Insufficient slot capacity');
-            }
-
-            // 6. Retrieve available tables
-            const freeTables = await findFreeTables(slotId, { transaction });
-
-            // 7. Calculate optimal table allocation
-            const allocatedTables = splitParty(numberOfPeople, freeTables);
-
-            if (!allocatedTables || allocatedTables.length === 0) {
-                throw new BookingError(
-                409, 'Not enough available table seats'
-                );
-            }
-
-            const allocatedSeats = allocatedTables.reduce((sum, table) => sum + table.allocatedSeats, 0);
-
-            if (allocatedSeats !== numberOfPeople || allocatedTables.some(table => !Number.isSafeInteger(table.allocatedSeats) || table.allocatedSeats < 1)) {
-                throw new Error('Invalid table allocation');
-            }
-
-            // 8. Create the booking
-            const booking = await Booking.create({
-                hikerId,
-                slotId,
-                numberOfPeople,
-                status: 'CONFIRMED',
-                allergyFlag,
-                allergyDescription: allergyFlag ? allergyDescription.trim() : null,
-                dietaryRequirements: cleanedDietaryRequirements
-            }, { transaction });
-
-            // 9. Save the allocated seats for each table
-            await BookingTable.bulkCreate(
-                allocatedTables.map(table => ({
-                bookingId: booking.id,
-                tableId: table.id,
-                allocatedSeats: table.allocatedSeats
-                })),
-                {
-                    transaction,
-                    validate: true
-                }
-            );
-
-            // 10. Return the created booking
             return {
-                id: booking.id,
-                hikerId: booking.hikerId,
-                slotId: booking.slotId,
-                numberOfPeople: booking.numberOfPeople,
-                status: booking.status,
-                dietaryRequirements: booking.dietaryRequirements,
-                tables: allocatedTables.map(table => ({
-                    id: table.id,
-                    tableNumber: table.tableNumber,
-                    allocatedSeats: table.allocatedSeats
-                }))
+                booking,
+                hiker: {
+                    id: bookingHiker.id,
+                    firstName: bookingHiker.firstName,
+                    lastName: bookingHiker.lastName,
+                    email: bookingHiker.email,
+                    phone: bookingHiker.phone,
+                    isTemporary: bookingHiker.isTemporary
+                },
+                generatedPassword
             };
         }
     );
@@ -269,7 +543,7 @@ export async function cancelBooking({bookingId}) {
     throw new BookingError(404, 'Booking not found');
   }
 
-  if (!['PENDING', 'CONFIRMED'].includes(booking.status)) { // can be cancelled only if it is pending or confirmed
+  if (!ACTIVE_STATUSES.includes(booking.status)) { // can be cancelled only if it is pending or confirmed
     throw new BookingError(
       409,
       'Booking is not active'

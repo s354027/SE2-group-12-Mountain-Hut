@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { requireRole } from '../middleware/requireRole.js';
-import { createBooking, cancelBooking } from '../controllers/bookingController.js';
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js';
+import { createBooking, createStaffBooking, cancelBooking } from '../controllers/bookingController.js';
 
 const router = Router();
 
@@ -13,10 +14,20 @@ router.post(
   '/',
   requireAuth,
   requireRole('HIKER'),
+  requirePasswordChanged,
   createBooking
 );
 
-export default router;
+/**
+ * POST /api/bookings/staff
+ * An employee enters a reservation on behalf of a hiker (MH-07).
+ */
+router.post(
+  '/staff',
+  requireAuth,
+  requireRole('EMPLOYEE'),
+  createStaffBooking
+);
 
 /**
  * PATCH /api/bookings/:id/cancel
@@ -28,3 +39,5 @@ router.patch(
   requireRole('WARDEN'), // maybe an EMPLOYEE could do this too (but the user story doesn't specify it)
   cancelBooking
 );
+
+export default router;
