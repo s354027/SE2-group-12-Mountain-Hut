@@ -6,7 +6,8 @@ import { createAdminRouter } from './routes/admin.routes.js';
 import availabilityRouter from './routes/availability.routes.js';
 import { createSlotRouter } from './routes/slot.routes.js';
 import { createTableRouter } from './routes/table.routes.js';
-import { models } from './db/index.js';
+import { models, sequelize } from './db/index.js';
+import { createHikerRouter } from './routes/hiker.routes.js';
 import bookingRouter from './routes/booking.routes.js';
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/auth', createAuthRouter(models));
 app.use('/api/admin', createAdminRouter(models));
 app.use('/api/availability', availabilityRouter);
 app.use('/api/bookings', bookingRouter);
+app.use('/api/hikers', createHikerRouter({ User: models.User, sequelize }));
 app.use('/api/slots', createSlotRouter(models));
 app.use('/api/tables', createTableRouter(models));
 
