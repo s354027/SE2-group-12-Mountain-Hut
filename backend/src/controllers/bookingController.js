@@ -1,4 +1,4 @@
-import {createBookingForHiker, createBookingByStaff, cancelBooking as cancelBookingService, BookingError} from '../services/bookingService.js';
+import {createBookingForHiker, createBookingByStaff, cancelBooking as cancelBookingService, modifyBookingForHiker, BookingError} from '../services/bookingService.js';
 
 import {notifyBookingConfirmed} from '../services/bookingNotifications.js';
 
@@ -166,6 +166,62 @@ export async function cancelBooking(req, res) {
     });
   }
 }
+
+export async function modifyBooking(req, res) {
+  const bookingId = Number(req.params.id);
+  const body = req.body;
+
+  if (!Number.isSafeInteger(bookingId) || bookingId < 1) {
+    return res.status(400).json({error: 'bookingId must be a positive integer'});
+  }
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return res.status(400).json({error: 'Invalid request body'});
+  }
+
+  const allowedFields = [
+    'slotId',
+    'numberOfPeople',
+    'allergyFlag',
+    'allergyDescription',
+    'dietaryRequirements'
+  ];
+
+  const bodyFields = Object.keys(body);
+
+  if (bodyFields.length === 0) {
+    return res.status(400).json({error: 'No booking fields to update'});
+  }
+  if (bodyFields.some(field => !allowedFields.includes(field))) {
+    return res.status(400).json({error: 'Unsupported booking field'});
+  }
+
+  try {
+    const booking = await modifyBookingForHiker({
+      bookingId,
+      hikerId: req.session.user.id,
+      slotId: body.slotId,
+      numberOfPeople: body.numberOfPeople,
+      allergyFlag: body.allergyFlag,
+      allergyDescription: body.allergyDescription,
+      dietaryRequirements: body.dietaryRequirements
+    });
+  
+    return res.status(200).json(booking);
+  } 
+  catch (error) {
+    if (error instanceof BookingError) {
+      return res.status(error.status).json({
+        error: error.message
+      });
+    }
+    if (error.name === 'SequelizeValidationError') {
+      return res.status(400).json({error: 'Invalid booking data'});
+    }
+    console.error('Booking modification failed:', error);
+    return res.status(500).json({error: 'Unable to modify booking'});
+  }
+}
+
 
 const HIKER_MODES = ['EXISTING', 'FULL', 'QUICK'];
 

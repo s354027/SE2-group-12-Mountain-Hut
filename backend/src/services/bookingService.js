@@ -560,3 +560,235 @@ export async function cancelBooking({bookingId}) {
     status: booking.status
   };
 }
+
+// Only the modified booking is reallocated; existing bookings keep their current table assignments.
+export async function modifyBookingForHiker({
+    bookingId,
+    hikerId,
+    slotId,
+    numberOfPeople,
+    allergyFlag,
+    allergyDescription,
+    dietaryRequirements
+}) {
+    const { Booking, BookingTable, DiningTable } = models;
+
+    if (!Number.isSafeInteger(bookingId) || bookingId < 1) {
+        throw new BookingError(400, 'Invalid booking ID');
+    }
+
+    return runBookingTransaction(async transaction => {
+
+        // 1. Load the booking
+        const booking = await Booking.findByPk(
+            bookingId,
+            { transaction }
+        );
+
+        if (!booking) {
+            throw new BookingError(404, 'Booking not found');
+        }
+
+        // 2. A hiker can modify only their own booking
+        if (booking.hikerId !== hikerId) {
+            throw new BookingError(403, 'Cannot modify another hiker booking');
+        }
+
+        if (!ACTIVE_STATUSES.includes(booking.status)) {
+            throw new BookingError(409, 'Booking is not active');
+        }
+
+        // PATCH semantics: omitted fields keep their current value.
+        const finalSlotId = slotId === undefined ? booking.slotId : slotId;
+
+        const finalNumberOfPeople = numberOfPeople === undefined ? booking.numberOfPeople : numberOfPeople;
+
+        const finalAllergyFlag = allergyFlag === undefined ? booking.allergyFlag : allergyFlag;
+
+        const finalAllergyDescription = allergyDescription === undefined ? booking.allergyDescription : allergyDescription;
+
+        const finalDietaryRequirements = dietaryRequirements === undefined ? booking.dietaryRequirements : dietaryRequirements;
+
+        // 3. Validate the final state of the booking
+        const cleanedDietaryRequirements = validateBookingDetails({
+            slotId: finalSlotId,
+            numberOfPeople: finalNumberOfPeople,
+            allergyFlag: finalAllergyFlag,
+            allergyDescription: finalAllergyDescription,
+            dietaryRequirements: finalDietaryRequirements
+        });
+
+        const allocationChanged = finalSlotId !== booking.slotId || finalNumberOfPeople !== booking.numberOfPeople;
+
+        /*
+         * If only requirements changed, don't touch the
+         * table allocation.
+         */
+        if (allocationChanged) {
+            // 4. Verify the target slot
+            const slot = await findOpenSlot(
+                finalSlotId,
+                transaction
+            );
+
+            // Moving/changing the reservation must still
+            // respect the hiker booking deadline.
+            const slotStart = getSlotStart(slot);
+            const twoHoursMs = 2 * 60 * 60 * 1000;
+
+            if (Number.isNaN(slotStart.getTime()) || slotStart.getTime() - Date.now() < twoHoursMs) {
+                throw new BookingError(409, 'Booking deadline has passed');
+            }
+
+            // 5. The hiker cannot end up with two active
+            // bookings for the same slot.
+            const existingBooking = await Booking.findOne({
+                where: {
+                    id: {
+                        [Op.ne]: booking.id
+                    },
+                    hikerId,
+                    slotId: finalSlotId,
+                    status: {
+                        [Op.in]: ACTIVE_STATUSES
+                    }
+                },
+                transaction
+            });
+
+            if (existingBooking) {
+                throw new BookingError(409, 'Hiker already has a booking for this slot');
+            }
+
+            // 6. Check slot capacity, ignoring the booking
+            // currently being modified.
+            const bookedSeats = await Booking.sum(
+                'numberOfPeople',
+                {
+                    where: {
+                        id: {
+                            [Op.ne]: booking.id
+                        },
+                        slotId: finalSlotId,
+                        status: {
+                            [Op.in]: ACTIVE_STATUSES
+                        }
+                    },
+                    transaction
+                }
+            );
+
+            const remainingCapacity =
+                slot.totalCapacity -
+                (bookedSeats ?? 0);
+
+            if (
+                finalNumberOfPeople >
+                remainingCapacity
+            ) {
+                throw new BookingError(
+                    409,
+                    'Insufficient slot capacity'
+                );
+            }
+
+            // 7. Find free tables while ignoring the old
+            // allocation of this booking.
+            const freeTables = await findFreeTables(
+                    finalSlotId,
+                    {
+                        transaction,
+                        excludeBookingId: booking.id
+                    }
+                );
+
+            const allocatedTables =
+                splitParty(
+                    finalNumberOfPeople,
+                    freeTables
+                );
+
+            if (
+                !allocatedTables || allocatedTables.length === 0
+            ) {
+                throw new BookingError(409, 'Not enough available table seats');
+            }
+
+            const allocatedSeats = allocatedTables.reduce((sum, table) => sum + table.allocatedSeats, 0);
+
+            if (allocatedSeats !== finalNumberOfPeople || allocatedTables.some(table => !Number.isSafeInteger(table.allocatedSeats) || table.allocatedSeats < 1)) {
+                throw new Error('Invalid table allocation');
+            }
+
+            // 8. Remove the old allocation.
+            await BookingTable.destroy({
+                where: {
+                    bookingId: booking.id
+                },
+                transaction
+            });
+
+            // 9. Save the new allocation.
+            await BookingTable.bulkCreate(
+                allocatedTables.map(table => ({
+                    bookingId: booking.id,
+                    tableId: table.id,
+                    allocatedSeats: table.allocatedSeats
+                })),
+                {
+                    transaction,
+                    validate: true
+                }
+            );
+        }
+
+        // 10. Update booking data
+        await booking.update(
+            {
+                slotId: finalSlotId,
+                numberOfPeople: finalNumberOfPeople,
+                allergyFlag: finalAllergyFlag,
+                allergyDescription: finalAllergyFlag ? finalAllergyDescription.trim() : null,
+                dietaryRequirements: cleanedDietaryRequirements
+            },
+            { transaction }
+        );
+
+        // 11. Reload the final table assignment
+        const updatedBooking =
+            await Booking.findByPk(
+                booking.id,
+                {
+                    include: [
+                        {
+                            model: DiningTable,
+                            as: 'tables',
+                            through: {
+                                attributes: ['allocatedSeats']
+                            }
+                        }
+                    ],
+                    transaction
+                }
+            );
+
+        return {
+            id: updatedBooking.id,
+            hikerId: updatedBooking.hikerId,
+            slotId: updatedBooking.slotId,
+            numberOfPeople: updatedBooking.numberOfPeople,
+            status: updatedBooking.status,
+            allergyFlag: updatedBooking.allergyFlag,
+            allergyDescription: updatedBooking.allergyDescription,
+            dietaryRequirements: updatedBooking.dietaryRequirements,
+
+            tables: updatedBooking.tables.map(
+                table => ({
+                    id: table.id,
+                    tableNumber: table.tableNumber,
+                    allocatedSeats: table.BookingTable.allocatedSeats
+                })
+            )
+        };
+    });
+}
