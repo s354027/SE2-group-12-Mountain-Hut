@@ -74,3 +74,14 @@
   color: #244c3d;
   font-size: 0.85rem;
 }
+
+/* MH-75: compact day/week calendar for the staff slot list. */
+.slot-calendar-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin: 18px 0; }
+.slot-calendar-view, .slot-calendar-navigation { display: flex; gap: 5px; }
+.slot-calendar-view button, .slot-calendar-navigation button { border: 1px solid #cbd8cf; border-radius: 7px; background: white; color: #244c3d; padding: 7px 13px; cursor: pointer; }
+.slot-calendar-view button.slot-calendar-active { background: #244c3d; color: white; }
+.slot-calendar-range { color: #244c3d; }
+.slot-calendar-days { display: grid; gap: 12px; margin-bottom: 24px; }
+.slot-calendar-day { border: 1px solid #dce6de; border-radius: 10px; padding: 12px; background: #fff; }
+.slot-calendar-day-heading { margin: 0 0 10px; color: #244c3d; font-size: 1.05rem; }
+.slot-calendar-empty { color: #697a70; margin: 4px 0; font-size: 0.9rem; }

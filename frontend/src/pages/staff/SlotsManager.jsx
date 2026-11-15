@@ -29,6 +29,31 @@ function validate(form) {
 
 const selectStyle = { width: '100%', padding: '10px 12px', border: '1px solid #d3d9df', borderRadius: 6, fontSize: '1rem', background: '#fff' };
 
+// Work with local calendar dates to avoid UTC shifting the displayed day.
+function dateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function startOfWeek(date) {
+  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
+  return monday;
+}
+
+function addDays(date, amount) {
+  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  result.setDate(result.getDate() + amount);
+  return result;
+}
+
+function readableDate(date) {
+  return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+
 export default function SlotsManager() {
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +68,8 @@ export default function SlotsManager() {
   const [copySourceId, setCopySourceId] = useState('');
   const [copying, setCopying] = useState(false);
   const [copyError, setCopyError] = useState('');
+  const [calendarView, setCalendarView] = useState('week');
+  const [calendarAnchor, setCalendarAnchor] = useState(() => new Date());
 
   const tablesDropdownRef = useRef(null);
   
@@ -203,6 +230,21 @@ export default function SlotsManager() {
     }
   }
 
+  const weekStart = startOfWeek(calendarAnchor);
+  const periodStart = calendarView === 'day' ? dateKey(calendarAnchor) : dateKey(weekStart);
+  const periodEnd = calendarView === 'day' ? periodStart : dateKey(addDays(weekStart, 6));
+  const visibleSlots = slots
+    .filter((slot) => slot.date >= periodStart && slot.date <= periodEnd)
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date) || String(a.startTime).localeCompare(String(b.startTime)));
+  const displayedDays = calendarView === 'day'
+    ? [new Date(calendarAnchor.getFullYear(), calendarAnchor.getMonth(), calendarAnchor.getDate())]
+    : Array.from({ length: 7 }, (_, index) => addDays(weekStart, index));
+
+  function moveCalendar(direction) {
+    setCalendarAnchor((current) => addDays(current, direction * (calendarView === 'day' ? 1 : 7)));
+  }
+
   return (
     <section aria-labelledby="slots-title">
       <h2 id="slots-title">Slots</h2>
@@ -213,37 +255,73 @@ export default function SlotsManager() {
           {loadError} <button type="button" onClick={loadSlots}>Retry</button>
         </p>
       )}
-      {!loading && !loadError && slots.length === 0 && <p>No slots yet. Add the first one below.</p>}
+      <div className="slot-calendar-toolbar" aria-label="Slot calendar controls">
+        <div className="slot-calendar-view" role="group" aria-label="Calendar view">
+          <button type="button" className={calendarView === 'day' ? 'slot-calendar-active' : ''}
+            aria-pressed={calendarView === 'day'} onClick={() => setCalendarView('day')}>Day</button>
+          <button type="button" className={calendarView === 'week' ? 'slot-calendar-active' : ''}
+            aria-pressed={calendarView === 'week'} onClick={() => setCalendarView('week')}>Week</button>
+        </div>
+        <div className="slot-calendar-navigation">
+          <button type="button" onClick={() => moveCalendar(-1)} aria-label="Previous period">←</button>
+          <button type="button" onClick={() => setCalendarAnchor(new Date())}>Today</button>
+          <button type="button" onClick={() => moveCalendar(1)} aria-label="Next period">→</button>
+        </div>
+        <strong className="slot-calendar-range">
+          {calendarView === 'day'
+            ? readableDate(calendarAnchor)
+            : `${readableDate(weekStart)} – ${readableDate(addDays(weekStart, 6))}`}
+        </strong>
+      </div>
 
-      {slots.length > 0 && (
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-            <thead>
-              <tr>
-                {['Date', 'Start', 'Duration (min)', 'Meal', 'Capacity', 'Status', 'Tables', ''].map((h) => (
-                  <th key={h} style={{ textAlign: 'left', padding: 8, borderBottom: '2px solid #ccc' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {slots.map((slot) => (
-                <tr key={slot.id}>
-                  <td style={{ padding: 8 }}>{slot.date}</td>
-                  <td style={{ padding: 8 }}>{String(slot.startTime).slice(0, 5)}</td>
-                  <td style={{ padding: 8 }}>{slot.duration}</td>
-                  <td style={{ padding: 8 }}>{slot.meal}</td>
-                  <td style={{ padding: 8 }}>{slot.totalCapacity}</td>
-                  <td style={{ padding: 8 }}>{slot.status}</td>
-                  <td style={{ padding: 8 }}>
-                    {(slot.tables || []).map((t) => t.tableNumber).join(', ') || '-'}
-                  </td>
-                  <td style={{ padding: 8 }}>
-                    <button className="btn-edit" onClick={() => startEdit(slot)}>Edit</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {!loading && !loadError && slots.length === 0 && <p>No slots yet. Add the first one below.</p>}
+      {!loading && !loadError && slots.length > 0 && visibleSlots.length === 0 && (
+        <p>No slots scheduled for this {calendarView}. Use the arrows to browse another {calendarView}.</p>
+      )}
+
+      {!loadError && visibleSlots.length > 0 && (
+        <div className="slot-calendar-days">
+          {displayedDays.map((day) => {
+            const key = dateKey(day);
+            const daySlots = visibleSlots.filter((slot) => slot.date === key);
+            return (
+              <section key={key} className="slot-calendar-day" aria-label={readableDate(day)}>
+                <h3 className="slot-calendar-day-heading">{readableDate(day)}</h3>
+                {daySlots.length === 0 ? (
+                  <p className="slot-calendar-empty">No slots</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                      <thead>
+                        <tr>
+                          {['Start', 'Duration (min)', 'Meal', 'Capacity', 'Status', 'Tables', ''].map((h) => (
+                            <th key={h} style={{ textAlign: 'left', padding: 8, borderBottom: '2px solid #ccc' }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {daySlots.map((slot) => (
+                          <tr key={slot.id}>
+                            <td style={{ padding: 8 }}>{String(slot.startTime).slice(0, 5)}</td>
+                            <td style={{ padding: 8 }}>{slot.duration}</td>
+                            <td style={{ padding: 8 }}>{slot.meal}</td>
+                            <td style={{ padding: 8 }}>{slot.totalCapacity}</td>
+                            <td style={{ padding: 8 }}>{slot.status}</td>
+                            <td style={{ padding: 8 }}>
+                              {(slot.tables || []).map((t) => t.tableNumber).join(', ') || '-'}
+                            </td>
+                            <td style={{ padding: 8 }}>
+                              <button type="button" className="btn-edit" onClick={() => startEdit(slot)}>Edit</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
 
