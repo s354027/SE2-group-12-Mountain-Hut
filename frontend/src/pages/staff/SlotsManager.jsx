@@ -40,6 +40,9 @@ export default function SlotsManager() {
   const [saving, setSaving] = useState(false);
   const [tables, setTables] = useState([]);
   const [tablesError, setTablesError] = useState('');
+  const [copySourceId, setCopySourceId] = useState('');
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState('');
 
   const tablesDropdownRef = useRef(null);
   
@@ -102,6 +105,8 @@ export default function SlotsManager() {
 
   setFormError('');
   setMessage('');
+  setCopySourceId('');
+  setCopyError('');
 }
 
  function cancelEdit() {
@@ -112,6 +117,8 @@ export default function SlotsManager() {
   setEditingId(null);
   setForm(EMPTY_FORM);
   setFormError('');
+  setCopySourceId('');
+  setCopyError('');
 }
 
   async function handleSubmit(event) {
@@ -163,6 +170,37 @@ export default function SlotsManager() {
         ? current.tableIds.filter((id) => id !== tableId)
         : [...current.tableIds, tableId],
     }));
+  }
+
+  const copySourceOptions = slots
+    .filter((slot) => slot.id !== editingId && (slot.tables || []).length > 0)
+    .slice()
+    .sort((a, b) =>
+      a.date === b.date
+        ? String(b.startTime).localeCompare(String(a.startTime))
+        : b.date.localeCompare(a.date),
+    );
+
+  async function copyTablesFromPreviousSlot() {
+    if (!copySourceId) return;
+    setCopying(true);
+    setCopyError('');
+    setMessage('');
+    try {
+      const updatedSlot = await api.post(`/slots/${editingId}/copy-tables`, {
+        sourceSlotId: Number(copySourceId),
+      });
+      setForm((current) => ({
+        ...current,
+        tableIds: (updatedSlot.tables || []).map((table) => Number(table.id)),
+      }));
+      setMessage('Tables copied from the selected slot.');
+      await loadSlots();
+    } catch (err) {
+      setCopyError(err.message || 'Could not copy tables from that slot.');
+    } finally {
+      setCopying(false);
+    }
   }
 
   return (
@@ -237,6 +275,40 @@ export default function SlotsManager() {
             </select>
           </div>
         </div>
+        {editingId !== null && copySourceOptions.length > 0 && (
+          <div className="slot-copy-tables">
+            <label htmlFor="copy-source-slot">Copy tables from previous slot</label>
+            <div className="slot-copy-tables-controls">
+              <select
+                id="copy-source-slot"
+                value={copySourceId}
+                onChange={(event) => setCopySourceId(event.target.value)}
+                style={selectStyle}
+              >
+                <option value="">Select a slot…</option>
+                {copySourceOptions.map((slot) => (
+                  <option key={slot.id} value={slot.id}>
+                    {slot.date} · {String(slot.startTime).slice(0, 5)} · {slot.meal} (
+                    {(slot.tables || []).map((table) => table.tableNumber).join(', ')})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={copyTablesFromPreviousSlot}
+                disabled={!copySourceId || copying}
+              >
+                {copying ? 'Copying...' : 'Copy'}
+              </button>
+            </div>
+            {copyError && (
+              <p role="alert" className="form-error">
+                {copyError}
+              </p>
+            )}
+          </div>
+        )}
         <div className="slot-tables-section">
           <div className="slot-tables-heading">
             <label id="slot-tables-label">Tables</label>

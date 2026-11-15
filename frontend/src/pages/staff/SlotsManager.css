@@ -1,3 +1,23 @@
+/* MH-88 — lets staff copy the table list from an earlier slot instead
+   of re-selecting tables by hand; only shown while editing a slot. */
+.slot-copy-tables {
+  margin: 8px 0 18px;
+  max-width: 600px;
+}
+.slot-copy-tables label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #244c3d;
+}
+.slot-copy-tables-controls {
+  display: flex;
+  gap: 8px;
+}
+.slot-copy-tables-controls select {
+  flex: 1;
+}
+
 /* Table selection sits below the slot inputs so chips never stretch grid rows. */
 .slot-tables-section {
   margin: 8px 0 22px;
