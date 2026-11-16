@@ -77,15 +77,36 @@ function tomorrowDate() {
     return `${year}-${month}-${day}`;
 }
 
+// The slot calendar (MH-75) shows the date as a section heading rather than
+// inside each row, so switch to the single-day view for that date first.
+async function goToCalendarDay(page, dateStr) {
+    await page.getByRole("button", { name: "Day", exact: true }).click();
+    await page.getByRole("button", { name: "Today", exact: true }).click();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(`${dateStr}T00:00:00`);
+    const diffDays = Math.round((target - today) / 86400000);
+
+    const step = diffDays >= 0
+        ? page.getByRole("button", { name: "Next period" })
+        : page.getByRole("button", { name: "Previous period" });
+
+    for (let i = 0; i < Math.abs(diffDays); i += 1) {
+        await step.click();
+    }
+}
+
 test("updating table seats updates associated slot capacity", async ({ page }) => {
     await loginAsWarden(page);
 
     await page.goto("/staff/slots");
 
     const date = tomorrowDate();
+    await goToCalendarDay(page, date);
 
     // Seeded lunch slot: all tables -> total capacity 28.
-    const slotRow = page.getByRole("row").filter({ hasText: date }).filter({ hasText: "12:00" });
+    const slotRow = page.getByRole("row").filter({ hasText: "12:00" });
 
     await expect(slotRow.getByRole("cell", { name: "28", exact: true })).toBeVisible();
 
