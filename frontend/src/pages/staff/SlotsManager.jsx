@@ -183,9 +183,27 @@ export default function SlotsManager() {
 
   async function copyTablesFromPreviousSlot() {
     if (!copySourceId) return;
-    setCopying(true);
     setCopyError('');
     setMessage('');
+
+    // No slot id to call the copy-tables endpoint on yet; just prefill the
+    // table selection locally from the already-loaded source slot.
+    if (editingId === null) {
+      const sourceSlot = slots.find((slot) => slot.id === Number(copySourceId));
+      const sourceTables = sourceSlot?.tables || [];
+      if (sourceTables.length === 0) {
+        setCopyError('Selected source slot has no tables assigned.');
+        return;
+      }
+      setForm((current) => ({
+        ...current,
+        tableIds: sourceTables.map((table) => Number(table.id)),
+      }));
+      setMessage('Tables copied from the selected slot.');
+      return;
+    }
+
+    setCopying(true);
     try {
       const updatedSlot = await api.post(`/slots/${editingId}/copy-tables`, {
         sourceSlotId: Number(copySourceId),
@@ -275,7 +293,7 @@ export default function SlotsManager() {
             </select>
           </div>
         </div>
-        {editingId !== null && copySourceOptions.length > 0 && (
+        {copySourceOptions.length > 0 && (
           <div className="slot-copy-tables">
             <label htmlFor="copy-source-slot">Copy tables from previous slot</label>
             <div className="slot-copy-tables-controls">
