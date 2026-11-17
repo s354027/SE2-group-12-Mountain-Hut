@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { createBookingForHiker } = vi.hoisted(() => ({
+const { createBookingForHiker, getBookingForHiker, listBookingsForHiker } = vi.hoisted(() => ({
   createBookingForHiker: vi.fn(),
+  getBookingForHiker: vi.fn(),
+  listBookingsForHiker: vi.fn(),
 }));
 
 vi.mock("../../src/services/bookingService.js", () => {
@@ -12,7 +14,7 @@ vi.mock("../../src/services/bookingService.js", () => {
       this.status = status;
     }
   }
-  return { createBookingForHiker, BookingError };
+  return { createBookingForHiker, getBookingForHiker, listBookingsForHiker, BookingError };
 });
 
 const { notifyBookingConfirmed } = vi.hoisted(() => ({
@@ -23,7 +25,7 @@ vi.mock("../../src/services/bookingNotifications.js", () => ({
   notifyBookingConfirmed,
 }));
 
-import { createBooking } from "../../src/controllers/bookingController.js";
+import { createBooking, getBooking, listBookings } from "../../src/controllers/bookingController.js";
 import { BookingError } from "../../src/services/bookingService.js";
 
 function mockRes() {
@@ -35,6 +37,10 @@ function mockRes() {
 
 function mockReq(body) {
   return { body, session: { user: { id: 7 } } };
+}
+
+function mockReqWithParams(params) {
+  return { params, session: { user: { id: 7 } } };
 }
 
 describe("createBooking", () => {
@@ -257,5 +263,81 @@ describe("createBooking", () => {
 
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: "Unable to create booking" });
+  });
+});
+
+describe("getBooking", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("rejects a non-numeric id", async () => {
+    const res = mockRes();
+    await getBooking(mockReqWithParams({ id: "abc" }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: "bookingId must be a positive integer" });
+    expect(getBookingForHiker).not.toHaveBeenCalled();
+  });
+
+  it("fetches the booking for the authenticated hiker and returns 200", async () => {
+    const booking = { id: 5, hikerId: 7, slotId: 1, numberOfPeople: 2, status: "CONFIRMED", slot: null, tables: [] };
+    getBookingForHiker.mockResolvedValue(booking);
+    const res = mockRes();
+
+    await getBooking(mockReqWithParams({ id: "5" }), res);
+
+    expect(getBookingForHiker).toHaveBeenCalledWith({ bookingId: 5, hikerId: 7 });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(booking);
+  });
+
+  it("maps a BookingError from the service to its status and message", async () => {
+    getBookingForHiker.mockRejectedValue(new BookingError(403, "Cannot view another hiker booking"));
+    const res = mockRes();
+
+    await getBooking(mockReqWithParams({ id: "5" }), res);
+
+    expect(res.status).toHaveBeenCalledWith(403);
+    expect(res.json).toHaveBeenCalledWith({ error: "Cannot view another hiker booking" });
+  });
+
+  it("returns 500 for an unexpected error", async () => {
+    getBookingForHiker.mockRejectedValue(new Error("boom"));
+    const res = mockRes();
+
+    await getBooking(mockReqWithParams({ id: "5" }), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "Unable to retrieve booking" });
+  });
+});
+
+describe("listBookings", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+  });
+
+  it("lists the authenticated hiker's bookings and returns 200", async () => {
+    const bookings = [{ id: 5 }, { id: 6 }];
+    listBookingsForHiker.mockResolvedValue(bookings);
+    const res = mockRes();
+
+    await listBookings(mockReq(undefined), res);
+
+    expect(listBookingsForHiker).toHaveBeenCalledWith({ hikerId: 7 });
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(bookings);
+  });
+
+  it("returns 500 for an unexpected error", async () => {
+    listBookingsForHiker.mockRejectedValue(new Error("boom"));
+    const res = mockRes();
+
+    await listBookings(mockReq(undefined), res);
+
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({ error: "Unable to retrieve bookings" });
   });
 });

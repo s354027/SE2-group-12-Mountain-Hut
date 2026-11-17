@@ -792,3 +792,99 @@ export async function modifyBookingForHiker({
         };
     });
 }
+
+function formatBookingWithSlot(booking) {
+    return {
+        id: booking.id,
+        hikerId: booking.hikerId,
+        slotId: booking.slotId,
+        numberOfPeople: booking.numberOfPeople,
+        status: booking.status,
+        allergyFlag: booking.allergyFlag,
+        allergyDescription: booking.allergyDescription,
+        dietaryRequirements: booking.dietaryRequirements,
+
+        slot: booking.slot && {
+            id: booking.slot.id,
+            date: booking.slot.date,
+            startTime: booking.slot.startTime,
+            duration: booking.slot.duration,
+            meal: booking.slot.meal
+        },
+
+        tables: booking.tables.map(
+            table => ({
+                id: table.id,
+                tableNumber: table.tableNumber,
+                allocatedSeats: table.BookingTable.allocatedSeats
+            })
+        )
+    };
+}
+
+/**
+ * Loads a single booking owned by the given hiker, including its
+ * slot and table allocation, so the frontend can prefill an edit form.
+ */
+export async function getBookingForHiker({ bookingId, hikerId }) {
+    const { Booking, Slot, DiningTable } = models;
+
+    if (!Number.isSafeInteger(bookingId) || bookingId < 1) {
+        throw new BookingError(400, 'Invalid booking ID');
+    }
+
+    const booking = await Booking.findByPk(bookingId, {
+        include: [
+            {
+                model: Slot,
+                as: 'slot',
+                attributes: ['id', 'date', 'startTime', 'duration', 'meal']
+            },
+            {
+                model: DiningTable,
+                as: 'tables',
+                through: { attributes: ['allocatedSeats'] }
+            }
+        ]
+    });
+
+    if (!booking) {
+        throw new BookingError(404, 'Booking not found');
+    }
+
+    if (booking.hikerId !== hikerId) {
+        throw new BookingError(403, 'Cannot view another hiker booking');
+    }
+
+    return formatBookingWithSlot(booking);
+}
+
+/**
+ * Lists every booking owned by the given hiker (most recent slot first),
+ * for a "my bookings" overview.
+ */
+export async function listBookingsForHiker({ hikerId }) {
+    const { Booking, Slot, DiningTable } = models;
+
+    const bookings = await Booking.findAll({
+        where: { hikerId },
+        include: [
+            {
+                model: Slot,
+                as: 'slot',
+                attributes: ['id', 'date', 'startTime', 'duration', 'meal']
+            },
+            {
+                model: DiningTable,
+                as: 'tables',
+                through: { attributes: ['allocatedSeats'] }
+            }
+        ],
+        order: [
+            [{ model: Slot, as: 'slot' }, 'date', 'DESC'],
+            [{ model: Slot, as: 'slot' }, 'startTime', 'DESC']
+        ]
+    });
+
+    return bookings.map(formatBookingWithSlot);
+}

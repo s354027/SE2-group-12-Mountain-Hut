@@ -25,17 +25,37 @@ const HIKER = {
   role: 'HIKER'
 };
 
+const OTHER_HIKER = {
+  firstName: 'Other',
+  lastName: 'Hiker',
+  email: 'booking.integration.other@test.it',
+  role: 'HIKER'
+};
+
 let server;
 let baseUrl;
 let hiker;
+let otherHiker;
 let slot;
 let table;
+let getSlot;
+let getTable;
+let forbiddenSlot;
+let forbiddenTable;
+let multiTableSlot;
+let multiTableA;
+let multiTableB;
 
 beforeAll(async () => {
   await sequelize.sync({ force: true });
 
   hiker = await models.User.create({
     ...HIKER,
+    passwordHash: await hashPassword(PASSWORD)
+  });
+
+  otherHiker = await models.User.create({
+    ...OTHER_HIKER,
     passwordHash: await hashPassword(PASSWORD)
   });
 
@@ -57,6 +77,66 @@ beforeAll(async () => {
     slotId: slot.id,
     tableId: table.id
   });
+
+  // A dedicated slot/table for the GET tests, so creating bookings there
+  // never collides with the booking already created in the POST tests.
+  getSlot = await models.Slot.create({
+    date: '2030-07-01',
+    startTime: '19:00',
+    duration: 90,
+    meal: 'DINNER',
+    totalCapacity: 4,
+    status: 'OPEN'
+  });
+
+  getTable = await models.DiningTable.create({
+    tableNumber: 2,
+    seats: 4
+  });
+
+  await models.SlotTable.create({
+    slotId: getSlot.id,
+    tableId: getTable.id
+  });
+
+  // A third slot/table, dedicated to the "another hiker cannot view this
+  // booking" test, so it doesn't collide with the hiker's booking on getSlot.
+  forbiddenSlot = await models.Slot.create({
+    date: '2030-07-02',
+    startTime: '19:00',
+    duration: 90,
+    meal: 'DINNER',
+    totalCapacity: 4,
+    status: 'OPEN'
+  });
+
+  forbiddenTable = await models.DiningTable.create({
+    tableNumber: 3,
+    seats: 4
+  });
+
+  await models.SlotTable.create({
+    slotId: forbiddenSlot.id,
+    tableId: forbiddenTable.id
+  });
+
+  // A slot with two small tables, so a single booking forces a split across
+  // both: verifies the GET endpoints don't duplicate the booking when eager
+  // loading a belongsToMany (tables) alongside the slot include.
+  multiTableSlot = await models.Slot.create({
+    date: '2030-07-03',
+    startTime: '19:00',
+    duration: 90,
+    meal: 'DINNER',
+    totalCapacity: 4,
+    status: 'OPEN'
+  });
+
+  multiTableA = await models.DiningTable.create({ tableNumber: 4, seats: 2 });
+  multiTableB = await models.DiningTable.create({ tableNumber: 5, seats: 2 });
+
+  await models.SlotTable.create({ slotId: multiTableSlot.id, tableId: multiTableA.id });
+  await models.SlotTable.create({ slotId: multiTableSlot.id, tableId: multiTableB.id });
 
   await new Promise((resolve) => {
     server = app.listen(0, '127.0.0.1', resolve);
@@ -109,6 +189,18 @@ async function loginAsHiker() {
   const browser = createBrowser();
   const response = await browser('POST', '/api/auth/login', {
     email: HIKER.email,
+    password: PASSWORD
+  });
+
+  expect(response.status).toBe(200);
+  expect(response.data.role).toBe('HIKER');
+  return browser;
+}
+
+async function loginAsOtherHiker() {
+  const browser = createBrowser();
+  const response = await browser('POST', '/api/auth/login', {
+    email: OTHER_HIKER.email,
     password: PASSWORD
   });
 
@@ -197,4 +289,117 @@ describe('POST /api/bookings', () => {
   expect(await models.Booking.count()).toBe(bookingsBefore);
   expect(await models.BookingTable.count()).toBe(allocationsBefore);
 });
+});
+
+describe('GET /api/bookings/:id', () => {
+  it('requires authentication', async () => {
+    const response = await createBrowser()('GET', '/api/bookings/1');
+    expect(response.status).toBe(401);
+  });
+
+  it("returns the hiker's own booking with its slot and tables", async () => {
+    const browser = await loginAsHiker();
+
+    const created = await browser('POST', '/api/bookings', {
+      slotId: getSlot.id,
+      numberOfPeople: 2
+    });
+    expect(created.status).toBe(201);
+
+    const response = await browser('GET', `/api/bookings/${created.data.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.data).toMatchObject({
+      id: created.data.id,
+      hikerId: hiker.id,
+      slotId: getSlot.id,
+      numberOfPeople: 2,
+      status: 'CONFIRMED',
+      slot: {
+        id: getSlot.id,
+        date: getSlot.date,
+        meal: getSlot.meal
+      },
+      tables: [
+        {
+          id: getTable.id,
+          tableNumber: getTable.tableNumber,
+          allocatedSeats: 2
+        }
+      ]
+    });
+  });
+
+  it('returns 404 for a booking that does not exist', async () => {
+    const browser = await loginAsHiker();
+    const response = await browser('GET', '/api/bookings/999999');
+    expect(response.status).toBe(404);
+  });
+
+  it('returns every allocated table for a booking split across more than one', async () => {
+    const browser = await loginAsHiker();
+
+    const created = await browser('POST', '/api/bookings', {
+      slotId: multiTableSlot.id,
+      numberOfPeople: 4
+    });
+    expect(created.status).toBe(201);
+    expect(created.data.tables).toHaveLength(2);
+
+    const response = await browser('GET', `/api/bookings/${created.data.id}`);
+
+    expect(response.status).toBe(200);
+    expect(response.data.tables).toHaveLength(2);
+    expect(response.data.tables.map((table) => table.id).sort()).toEqual(
+      [multiTableA.id, multiTableB.id].sort()
+    );
+  });
+
+  it("rejects viewing another hiker's booking", async () => {
+    const browser = await loginAsHiker();
+
+    const created = await browser('POST', '/api/bookings', {
+      slotId: forbiddenSlot.id,
+      numberOfPeople: 1
+    });
+    expect(created.status).toBe(201);
+
+    const otherBrowser = await loginAsOtherHiker();
+    const response = await otherBrowser('GET', `/api/bookings/${created.data.id}`);
+
+    expect(response.status).toBe(403);
+  });
+});
+
+describe('GET /api/bookings', () => {
+  it('requires authentication', async () => {
+    const response = await createBrowser()('GET', '/api/bookings');
+    expect(response.status).toBe(401);
+  });
+
+  it("lists only the authenticated hiker's own bookings", async () => {
+    const browser = await loginAsHiker();
+    const response = await browser('GET', '/api/bookings');
+
+    expect(response.status).toBe(200);
+    expect(Array.isArray(response.data)).toBe(true);
+    expect(response.data.length).toBeGreaterThan(0);
+    expect(response.data.every((booking) => booking.hikerId === hiker.id)).toBe(true);
+
+    // The eager-loaded tables (belongsToMany) must not duplicate a booking row.
+    const bookingIds = response.data.map((booking) => booking.id);
+    expect(new Set(bookingIds).size).toBe(bookingIds.length);
+
+    // Sorted by the slot's date, most recent first.
+    const slotDates = response.data.map((booking) => booking.slot.date);
+    const sortedDescending = [...slotDates].sort().reverse();
+    expect(slotDates).toEqual(sortedDescending);
+
+    const otherBrowser = await loginAsOtherHiker();
+    const otherResponse = await otherBrowser('GET', '/api/bookings');
+
+    const otherBookingIds = otherResponse.data.map((booking) => booking.id);
+    const hikerBookingIds = response.data.map((booking) => booking.id);
+    expect(otherBookingIds.some((id) => hikerBookingIds.includes(id))).toBe(false);
+  });
 });
