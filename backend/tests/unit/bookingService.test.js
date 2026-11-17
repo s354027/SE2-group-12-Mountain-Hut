@@ -1,11 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { findByPkUser, findByPkSlot, findOne, sum, create, bulkCreate } = vi.hoisted(() => ({
+const {
+  findByPkUser,
+  findOneUser,
+  findByPkSlot,
+  findOne,
+  sum,
+  create,
+  createUser,
+  bulkCreate,
+} = vi.hoisted(() => ({
   findByPkUser: vi.fn(),
+  findOneUser: vi.fn(),
   findByPkSlot: vi.fn(),
   findOne: vi.fn(),
   sum: vi.fn(),
   create: vi.fn(),
+  createUser: vi.fn(),
   bulkCreate: vi.fn(),
 }));
 
@@ -24,7 +35,7 @@ const { splitParty } = vi.hoisted(() => ({
 vi.mock("../../src/db/index.js", () => ({
   sequelize: { transaction },
   models: {
-    User: { findByPk: findByPkUser },
+    User: { findByPk: findByPkUser, findOne: findOneUser, create: createUser },
     Slot: { findByPk: findByPkSlot },
     Booking: { findOne, sum, create },
     BookingTable: { bulkCreate },
@@ -39,7 +50,11 @@ vi.mock("../../src/services/partySplit.js", () => ({
   splitParty,
 }));
 
-import { createBookingForHiker, BookingError } from "../../src/services/bookingService.js";
+import {
+  createBookingByStaff,
+  createBookingForHiker,
+  BookingError,
+} from "../../src/services/bookingService.js";
 
 const validInput = {
   hikerId: 1,
@@ -51,7 +66,7 @@ const futureSlot = {
   date: "2099-01-01",
   startTime: "20:00:00",
   status: "OPEN",
-  totalCapacity: 10
+  totalCapacity: 10,
 };
 
 async function expectBookingError(promise, status, message) {
@@ -63,15 +78,12 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   transaction.mockReset();
-  transaction.mockImplementation(
-    (_options, callback) => callback({})
-  );
+  transaction.mockImplementation((_options, callback) => callback({}));
 
   findOne.mockResolvedValue(null); //by default: the hiker doesn't have a reservation
 });
 
 describe("createBookingForHiker", () => {
-
   it("rejects an invalid party size", async () => {
     await expectBookingError(
       createBookingForHiker({ ...validInput, numberOfPeople: 0 }),
@@ -108,7 +120,11 @@ describe("createBookingForHiker", () => {
 
   it("rejects a missing allergy description when allergyFlag is true", async () => {
     await expectBookingError(
-      createBookingForHiker({ ...validInput, allergyFlag: true, allergyDescription: "   " }),
+      createBookingForHiker({
+        ...validInput,
+        allergyFlag: true,
+        allergyDescription: "   ",
+      }),
       400,
       "Allergy description is required",
     );
@@ -118,24 +134,40 @@ describe("createBookingForHiker", () => {
   it("rejects when the hiker does not exist or is not a HIKER", async () => {
     findByPkUser.mockResolvedValue(null);
 
-    await expectBookingError(createBookingForHiker(validInput), 403, "Invalid hiker");
+    await expectBookingError(
+      createBookingForHiker(validInput),
+      403,
+      "Invalid hiker",
+    );
 
     findByPkUser.mockResolvedValue({ role: "WARDEN" });
-    await expectBookingError(createBookingForHiker(validInput), 403, "Invalid hiker");
+    await expectBookingError(
+      createBookingForHiker(validInput),
+      403,
+      "Invalid hiker",
+    );
   });
 
   it("rejects when the slot does not exist", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
     findByPkSlot.mockResolvedValue(null);
 
-    await expectBookingError(createBookingForHiker(validInput), 404, "Slot not found");
+    await expectBookingError(
+      createBookingForHiker(validInput),
+      404,
+      "Slot not found",
+    );
   });
 
   it("rejects when the slot is not OPEN", async () => {
     findByPkUser.mockResolvedValue({ role: "HIKER" });
     findByPkSlot.mockResolvedValue({ status: "CLOSED", totalCapacity: 20 });
 
-    await expectBookingError(createBookingForHiker(validInput), 409, "Slot is not available");
+    await expectBookingError(
+      createBookingForHiker(validInput),
+      409,
+      "Slot is not available",
+    );
   });
 
   it("rejects when the party exceeds the remaining slot capacity", async () => {
@@ -155,11 +187,21 @@ describe("createBookingForHiker", () => {
     findByPkSlot.mockResolvedValue({ ...futureSlot, totalCapacity: 4 });
     sum.mockResolvedValue(null);
     findFreeTables.mockResolvedValue([{ id: 1, tableNumber: 1, seats: 4 }]);
-    splitParty.mockReturnValue([{ id: 1, tableNumber: 1, seats: 4, allocatedSeats: 4 }]);
-    create.mockResolvedValue({ id: 99, hikerId: 1, slotId: 10, numberOfPeople: 4, status: "CONFIRMED" });
+    splitParty.mockReturnValue([
+      { id: 1, tableNumber: 1, seats: 4, allocatedSeats: 4 },
+    ]);
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 4,
+      status: "CONFIRMED",
+    });
     bulkCreate.mockResolvedValue([]);
 
-    await expect(createBookingForHiker({ ...validInput, numberOfPeople: 4 })).resolves.toMatchObject({
+    await expect(
+      createBookingForHiker({ ...validInput, numberOfPeople: 4 }),
+    ).resolves.toMatchObject({
       id: 99,
     });
   });
@@ -198,7 +240,10 @@ describe("createBookingForHiker", () => {
     });
     bulkCreate.mockResolvedValue([]);
 
-    const result = await createBookingForHiker({ ...validInput, numberOfPeople: 6 });
+    const result = await createBookingForHiker({
+      ...validInput,
+      numberOfPeople: 6,
+    });
 
     expect(result).toEqual({
       id: 99,
@@ -245,14 +290,20 @@ describe("createBookingForHiker", () => {
     });
 
     expect(create).toHaveBeenCalledWith(
-      expect.objectContaining({ allergyFlag: true, allergyDescription: "nuts" }),
+      expect.objectContaining({
+        allergyFlag: true,
+        allergyDescription: "nuts",
+      }),
       expect.anything(),
     );
   });
 
   it("rejects a non-array dietaryRequirements", async () => {
     await expectBookingError(
-      createBookingForHiker({ ...validInput, dietaryRequirements: "vegetarian" }),
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: "vegetarian",
+      }),
       400,
       "dietaryRequirements must be an array",
     );
@@ -261,7 +312,10 @@ describe("createBookingForHiker", () => {
 
   it("rejects a dietaryRequirements entry that is not an object", async () => {
     await expectBookingError(
-      createBookingForHiker({ ...validInput, dietaryRequirements: ["vegetarian"] }),
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: ["vegetarian"],
+      }),
       400,
       "Each dietary requirement must be an object",
     );
@@ -336,9 +390,9 @@ describe("createBookingForHiker", () => {
     findFreeTables.mockResolvedValue(tables);
     splitParty.mockReturnValue(tables);
 
-    await expect(createBookingForHiker({ ...validInput, numberOfPeople: 4 })).rejects.toThrow(
-      "Invalid table allocation",
-    );
+    await expect(
+      createBookingForHiker({ ...validInput, numberOfPeople: 4 }),
+    ).rejects.toThrow("Invalid table allocation");
     expect(create).not.toHaveBeenCalled();
   });
 
@@ -352,13 +406,13 @@ describe("createBookingForHiker", () => {
       date: "2030-06-10",
       startTime: "20:00:00",
       status: "OPEN",
-      totalCapacity: 10
+      totalCapacity: 10,
     });
 
     await expectBookingError(
       createBookingForHiker(validInput),
       409,
-      "Booking deadline has passed"
+      "Booking deadline has passed",
     );
 
     expect(create).not.toHaveBeenCalled();
@@ -376,7 +430,7 @@ describe("createBookingForHiker", () => {
       date: "2030-06-10",
       startTime: "20:00:00",
       status: "OPEN",
-      totalCapacity: 10
+      totalCapacity: 10,
     });
 
     findOne.mockResolvedValue(null);
@@ -387,8 +441,8 @@ describe("createBookingForHiker", () => {
         id: 1,
         tableNumber: 1,
         seats: 4,
-        allocatedSeats: 4
-      }
+        allocatedSeats: 4,
+      },
     ];
 
     findFreeTables.mockResolvedValue(tables);
@@ -399,15 +453,13 @@ describe("createBookingForHiker", () => {
       hikerId: 1,
       slotId: 10,
       numberOfPeople: 4,
-      status: "CONFIRMED"
+      status: "CONFIRMED",
     });
 
     bulkCreate.mockResolvedValue([]);
 
-    await expect(
-      createBookingForHiker(validInput)
-    ).resolves.toMatchObject({
-      id: 99
+    await expect(createBookingForHiker(validInput)).resolves.toMatchObject({
+      id: 99,
     });
 
     vi.useRealTimers();
@@ -415,7 +467,7 @@ describe("createBookingForHiker", () => {
 
   it("rejects when the hiker already has an active booking for the slot", async () => {
     findByPkUser.mockResolvedValue({
-      role: "HIKER"
+      role: "HIKER",
     });
 
     findByPkSlot.mockResolvedValue(futureSlot);
@@ -424,13 +476,13 @@ describe("createBookingForHiker", () => {
       id: 50,
       hikerId: 1,
       slotId: 10,
-      status: "CONFIRMED"
+      status: "CONFIRMED",
     });
 
     await expectBookingError(
       createBookingForHiker(validInput),
       409,
-      "Hiker already has a booking for this slot"
+      "Hiker already has a booking for this slot",
     );
 
     expect(sum).not.toHaveBeenCalled();
@@ -444,16 +496,14 @@ describe("MH-29 concurrent booking transaction handling", () => {
   it("retries the booking transaction when SQLite is busy", async () => {
     const busyError = new Error("database is locked");
     busyError.original = {
-      code: "SQLITE_BUSY"
+      code: "SQLITE_BUSY",
     };
 
     transaction
       .mockRejectedValueOnce(busyError)
-      .mockImplementationOnce(
-        (_options, callback) => callback({})
-      );
+      .mockImplementationOnce((_options, callback) => callback({}));
 
-    findByPkUser.mockResolvedValue({role: "HIKER"});
+    findByPkUser.mockResolvedValue({ role: "HIKER" });
 
     findByPkSlot.mockResolvedValue(futureSlot);
 
@@ -464,8 +514,8 @@ describe("MH-29 concurrent booking transaction handling", () => {
         id: 1,
         tableNumber: 1,
         seats: 4,
-        allocatedSeats: 4
-      }
+        allocatedSeats: 4,
+      },
     ];
 
     findFreeTables.mockResolvedValue(tables);
@@ -476,7 +526,7 @@ describe("MH-29 concurrent booking transaction handling", () => {
       hikerId: 1,
       slotId: 10,
       numberOfPeople: 4,
-      status: "CONFIRMED"
+      status: "CONFIRMED",
     });
 
     bulkCreate.mockResolvedValue([]);
@@ -494,9 +544,7 @@ describe("MH-29 concurrent booking transaction handling", () => {
 
     transaction.mockRejectedValueOnce(error);
 
-    await expect(
-      createBookingForHiker(validInput)
-    ).rejects.toBe(error);
+    await expect(createBookingForHiker(validInput)).rejects.toBe(error);
 
     expect(transaction).toHaveBeenCalledTimes(1);
   });
@@ -505,20 +553,418 @@ describe("MH-29 concurrent booking transaction handling", () => {
   it("returns 503 when SQLite remains busy after all retries", async () => {
     const busyError = new Error("database is locked");
     busyError.original = {
-      code: "SQLITE_BUSY"
+      code: "SQLITE_BUSY",
     };
 
     transaction.mockRejectedValue(busyError);
 
-    await expect(
-      createBookingForHiker(validInput)
-    ).rejects.toMatchObject({
+    await expect(createBookingForHiker(validInput)).rejects.toMatchObject({
       status: 503,
-      message: "Booking service temporarily busy"
+      message: "Booking service temporarily busy",
     });
 
     expect(transaction).toHaveBeenCalledTimes(5); //5 because by default MAX_BUSY_RETRIES = 4
   });
-  
+});
 
+describe("validatesStaffHiker", () => {
+  it.each([
+    [null, "Hiker information is required"],
+    [1, "Hiker information is required"],
+    [[1], "Hiker information is required"],
+  ])("rejects invalid hiker input %#", async (hiker, message) => {
+    await expectBookingError(
+      createBookingByStaff({ hiker, slotId: 10, numberOfPeople: 1 }),
+      400,
+      message,
+    );
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it.each([{ mode: "EXISTING" }, { mode: "EXISTING", id: -1 }])(
+    "validates hiker id if EXISTING",
+    async (hiker) => {
+      await expectBookingError(
+        createBookingByStaff({
+          hiker,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        400,
+        "Invalid hiker ID",
+      );
+    },
+  );
+
+  it("rejects invalid email when FULL mode", async () => {
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "FULL", email: "invalid-email" },
+        slotId: 10,
+        numberOfPeople: 1,
+      }),
+      400,
+      "Invalid email format",
+    );
+  });
+
+  it.each([
+    {
+      hiker: {
+        mode: "FULL",
+        email: " ",
+        firstName: "John",
+        lastName: "Doe",
+        phone: "1234567890",
+      },
+      fieldName: "Email",
+    },
+    {
+      hiker: {
+        mode: "FULL",
+        email: "mario.rossi@mail.com",
+        firstName: " ",
+        lastName: "Doe",
+        phone: "1234567890",
+      },
+      fieldName: "First name",
+    },
+    {
+      hiker: {
+        mode: "FULL",
+        email: "mario.rossi@mail.com",
+        firstName: "Mario",
+        lastName: " ",
+        phone: "1234567890",
+      },
+      fieldName: "Last name",
+    },
+    {
+      hiker: {
+        mode: "FULL",
+        email: "mario.rossi@polito.it",
+        firstName: "Mario",
+        lastName: "Rossi",
+        phone: " ",
+      },
+      fieldName: "Mobile number",
+    },
+  ])(
+    "rejects invalid required fields when FULL mode %#",
+    async ({ hiker, fieldName }) => {
+      await expectBookingError(
+        createBookingByStaff({
+          hiker,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        400,
+        `${fieldName} is required`,
+      );
+    },
+  );
+
+  it.each([
+    {
+      hiker: {
+        mode: "QUICK",
+        firstName: " ",
+        lastName: "Doe",
+        phone: "1234567890",
+      },
+      fieldName: "Name",
+    },
+  ])(
+    "rejects invalid required fields when QUICK mode %#",
+    async ({ hiker, fieldName }) => {
+      await expectBookingError(
+        createBookingByStaff({
+          hiker,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        400,
+        `${fieldName} is required`,
+      );
+    },
+  );
+
+  it("rejects invalid mode", async () => {
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "INVALID" },
+        slotId: 10,
+        numberOfPeople: 1,
+      }),
+      400,
+      "Hiker mode must be EXISTING, FULL or QUICK",
+    );
+  });
+
+  it("rejects invalid slot id", async () => {
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "EXISTING", id: 1 },
+        slotId: 0,
+        numberOfPeople: 1,
+      }),
+      400,
+      "Invalid slot ID",
+    );
+  });
+
+  it("rejects invalid party size", async () => {
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "EXISTING", id: 1 },
+        slotId: 10,
+        numberOfPeople: 0,
+      }),
+      400,
+      "Invalid party size",
+    );
+  });
+
+  it("rejects invalid number of people when not an integer", async () => {
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "EXISTING", id: 1 },
+        slotId: 10,
+        numberOfPeople: 2.5,
+      }),
+      400,
+      "Invalid party size",
+    );
+  });
+
+  it("returns 404 if the hiker does not exist when mode is EXISTING", async () => {
+    findByPkUser.mockResolvedValue(null);
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "EXISTING", id: 1 },
+        slotId: 10,
+        numberOfPeople: 1,
+      }),
+      404,
+      "Hiker not found",
+    );
+  });
+
+  it("returns 409 if hiker mode is FULL and hiker exists", async () => {
+    findOneUser.mockResolvedValue({ id: 1, role: "HIKER" });
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: {
+          mode: "FULL",
+          email: "email@email.com",
+          firstName: "John",
+          lastName: "Doe",
+          phone: "1234567890",
+        },
+        slotId: 10,
+        numberOfPeople: 1,
+      }),
+      409,
+      "A user with this email is already registered",
+    );
+  });
+
+  it("returns 409 if slot have already started", async () => {
+    findOneUser.mockResolvedValue({ id: 1, role: "HIKER" });
+    findByPkSlot.mockResolvedValue({
+      date: "2030-06-10",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2030-06-10T21:00:00"));
+
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "EXISTING", id: 1 },
+        slotId: 10,
+        numberOfPeople: 1,
+      }),
+      409,
+      "Slot has already started",
+    );
+  });
+
+  it("reserves a booking for an existing hiker", async () => {
+    const tables = [{ id: 1, tableNumber: 4, seats: 4 }];
+    findByPkUser.mockResolvedValue({
+      id: 1,
+      firstName: "John",
+      lastName: "Doe",
+      email: "john.doe@mail.com",
+      phone: "1234567890",
+      isTemporary: false,
+      role: "HIKER",
+    });
+    findByPkSlot.mockResolvedValue({
+      id: 10,
+      date: "2099-01-01",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+    sum.mockResolvedValue(0);
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue([{ ...tables[0], allocatedSeats: 1 }]);
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 1,
+      status: "CONFIRMED",
+    });
+    bulkCreate.mockResolvedValue([]);
+
+    const res = await createBookingByStaff({
+      hiker: { mode: "EXISTING", id: 1 },
+      slotId: 10,
+      numberOfPeople: 1,
+    });
+    expect(res).toEqual(
+      expect.objectContaining({
+        booking: expect.objectContaining({
+          hikerId: 1,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        hiker: expect.objectContaining({
+          id: 1,
+          firstName: "John",
+          lastName: "Doe",
+          email: "john.doe@mail.com",
+          phone: "1234567890",
+          isTemporary: false,
+        }),
+        generatedPassword: null,
+      }),
+    );
+  });
+
+  it("reserves a booking for a FULL new hiker", async () => {
+    const tables = [{ id: 1, tableNumber: 4, seats: 4 }];
+    findOneUser.mockResolvedValue(null);
+    findByPkSlot.mockResolvedValue({
+      id: 10,
+      date: "2099-01-01",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+    sum.mockResolvedValue(0);
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue([{ ...tables[0], allocatedSeats: 1 }]);
+    createUser.mockResolvedValue({
+      id: 2,
+      firstName: "John",
+      lastName: "Doe",
+      email: "john.doe@mail.com",
+      phone: "1234567890",
+      isTemporary: false,
+    });
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 2,
+      slotId: 10,
+      numberOfPeople: 1,
+      status: "CONFIRMED",
+    });
+    bulkCreate.mockResolvedValue([]);
+
+    const res = await createBookingByStaff({
+      hiker: {
+        mode: "FULL",
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@mail.com",
+        phone: "1234567890",
+      },
+      slotId: 10,
+      numberOfPeople: 1,
+    });
+
+    expect(res).toEqual(
+      expect.objectContaining({
+        booking: expect.objectContaining({
+          hikerId: 2,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        hiker: expect.objectContaining({
+          firstName: "John",
+          lastName: "Doe",
+          email: "john.doe@mail.com",
+          phone: "1234567890",
+          isTemporary: false,
+        }),
+        generatedPassword: expect.any(String),
+      }),
+    );
+  });
+
+  it("reserves a booking for a QUICK new hiker", async () => {
+    const tables = [{ id: 1, tableNumber: 4, seats: 4 }];
+    findByPkUser.mockResolvedValue(null);
+    findByPkSlot.mockResolvedValue({
+      id: 10,
+      date: "2099-01-01",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+    sum.mockResolvedValue(0);
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue([{ ...tables[0], allocatedSeats: 1 }]);
+    createUser.mockResolvedValue({
+      id: 3,
+      firstName: "John",
+      lastName: "Doe",
+      email: null,
+      phone: "1234567890",
+      isTemporary: true,
+    });
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 3,
+      slotId: 10,
+      numberOfPeople: 1,
+      status: "CONFIRMED",
+    });
+    bulkCreate.mockResolvedValue([]);
+
+    const res = await createBookingByStaff({
+      hiker: {
+        mode: "QUICK",
+        firstName: "John",
+        lastName: "Doe",
+        phone: "1234567890",
+      },
+      slotId: 10,
+      numberOfPeople: 1,
+    });
+
+    expect(res).toEqual(
+      expect.objectContaining({
+        booking: expect.objectContaining({
+          hikerId: 3,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        hiker: expect.objectContaining({
+          firstName: "John",
+          lastName: "Doe",
+          email: null,
+          phone: "1234567890",
+          isTemporary: true,
+        }),
+        generatedPassword: null,
+      }),
+    );
+  });
 });
