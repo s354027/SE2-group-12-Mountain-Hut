@@ -496,5 +496,145 @@ describe("createStaffBooking", () => {
     });
   });
 
-  
+  it.each([
+    {
+      mode: "EXISTING",
+      hiker: { mode: "EXISTING", id: 1 },
+      resultHiker: {
+        id: 1,
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@mail.com",
+        phone: "1234567890",
+        isTemporary: false,
+      },
+      generatedPassword: null,
+    },
+    {
+      mode: "FULL",
+      hiker: {
+        mode: "FULL",
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@mail.com",
+        phone: "1234567890",
+      },
+      resultHiker: {
+        id: 2,
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@mail.com",
+        phone: "1234567890",
+        isTemporary: false,
+      },
+      generatedPassword: "generated-password",
+    },
+    {
+      mode: "QUICK",
+      hiker: {
+        mode: "QUICK",
+        firstName: "John",
+        lastName: "Doe",
+        phone: "1234567890",
+      },
+      resultHiker: {
+        id: 3,
+        firstName: "John",
+        lastName: "Doe",
+        email: null,
+        phone: "1234567890",
+        isTemporary: true,
+      },
+      generatedPassword: null,
+    },
+  ])("creates a booking for a $mode hiker", async ({
+    hiker,
+    resultHiker,
+    generatedPassword,
+  }) => {
+    const booking = {
+      id: 99,
+      hikerId: resultHiker.id,
+      slotId: 10,
+      numberOfPeople: 2,
+      status: "CONFIRMED",
+    };
+    createBookingByStaff.mockResolvedValue({
+      booking,
+      hiker: resultHiker,
+      generatedPassword,
+    });
+    const req = mockReq({
+      hiker,
+      slotId: 10,
+      numberOfPeople: 2,
+      allergyFlag: true,
+      allergyDescription: "  peanuts  ",
+      dietaryRequirements: [{ allergies: false, description: "vegetarian" }],
+    });
+    const res = mockRes();
+
+    await createStaffBooking(req, res);
+
+    expect(createBookingByStaff).toHaveBeenCalledWith({
+      hiker,
+      slotId: 10,
+      numberOfPeople: 2,
+      allergyFlag: true,
+      allergyDescription: "peanuts",
+      dietaryRequirements: [{ allergies: false, description: "vegetarian" }],
+    });
+    expect(notifyBookingConfirmed).toHaveBeenCalledWith(booking.id);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      ...booking,
+      hiker: resultHiker,
+      ...(generatedPassword ? { generatedPassword } : {}),
+    });
+  });
+
+  it("returns 201 when sending the confirmation email fails", async () => {
+    const booking = {
+      id: 99,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 1,
+      status: "CONFIRMED",
+    };
+    const result = {
+      booking,
+      hiker: {
+        id: 1,
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@mail.com",
+        phone: "1234567890",
+        isTemporary: false,
+      },
+      generatedPassword: null,
+    };
+    const notificationError = new Error("SMTP unavailable");
+    createBookingByStaff.mockResolvedValue(result);
+    notifyBookingConfirmed.mockRejectedValue(notificationError);
+    const res = mockRes();
+
+    await createStaffBooking(
+      mockReq({
+        hiker: { mode: "EXISTING", id: 1 },
+        slotId: 10,
+        numberOfPeople: 1,
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith({
+      ...booking,
+      hiker: result.hiker,
+    });
+    expect(console.error).toHaveBeenCalledWith(
+      "Booking notification failed:",
+      notificationError,
+    );
+  });
 });

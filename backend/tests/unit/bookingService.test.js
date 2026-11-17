@@ -7,16 +7,18 @@ const {
   findOne,
   sum,
   create,
+  createUser,
   bulkCreate,
 } = vi.hoisted(() => ({
-    findByPkUser: vi.fn(),
-    findOneUser: vi.fn(),
-    findByPkSlot: vi.fn(),
-    findOne: vi.fn(),
-    sum: vi.fn(),
-    create: vi.fn(),
-    bulkCreate: vi.fn(),
-  }));
+  findByPkUser: vi.fn(),
+  findOneUser: vi.fn(),
+  findByPkSlot: vi.fn(),
+  findOne: vi.fn(),
+  sum: vi.fn(),
+  create: vi.fn(),
+  createUser: vi.fn(),
+  bulkCreate: vi.fn(),
+}));
 
 const { transaction } = vi.hoisted(() => ({
   transaction: vi.fn((_options, callback) => callback({})),
@@ -33,7 +35,7 @@ const { splitParty } = vi.hoisted(() => ({
 vi.mock("../../src/db/index.js", () => ({
   sequelize: { transaction },
   models: {
-    User: { findByPk: findByPkUser, findOne: findOneUser },
+    User: { findByPk: findByPkUser, findOne: findOneUser, create: createUser },
     Slot: { findByPk: findByPkSlot },
     Booking: { findOne, sum, create },
     BookingTable: { bulkCreate },
@@ -764,6 +766,205 @@ describe("validatesStaffHiker", () => {
       }),
       409,
       "A user with this email is already registered",
+    );
+  });
+
+  it("returns 409 if slot have already started", async () => {
+    findOneUser.mockResolvedValue({ id: 1, role: "HIKER" });
+    findByPkSlot.mockResolvedValue({
+      date: "2030-06-10",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2030-06-10T21:00:00"));
+
+    await expectBookingError(
+      createBookingByStaff({
+        hiker: { mode: "EXISTING", id: 1 },
+        slotId: 10,
+        numberOfPeople: 1,
+      }),
+      409,
+      "Slot has already started",
+    );
+  });
+
+  it("reserves a booking for an existing hiker", async () => {
+    const tables = [{ id: 1, tableNumber: 4, seats: 4 }];
+    findByPkUser.mockResolvedValue({
+      id: 1,
+      firstName: "John",
+      lastName: "Doe",
+      email: "john.doe@mail.com",
+      phone: "1234567890",
+      isTemporary: false,
+      role: "HIKER",
+    });
+    findByPkSlot.mockResolvedValue({
+      id: 10,
+      date: "2099-01-01",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+    sum.mockResolvedValue(0);
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue([{ ...tables[0], allocatedSeats: 1 }]);
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 1,
+      status: "CONFIRMED",
+    });
+    bulkCreate.mockResolvedValue([]);
+
+    const res = await createBookingByStaff({
+      hiker: { mode: "EXISTING", id: 1 },
+      slotId: 10,
+      numberOfPeople: 1,
+    });
+    expect(res).toEqual(
+      expect.objectContaining({
+        booking: expect.objectContaining({
+          hikerId: 1,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        hiker: expect.objectContaining({
+          id: 1,
+          firstName: "John",
+          lastName: "Doe",
+          email: "john.doe@mail.com",
+          phone: "1234567890",
+          isTemporary: false,
+        }),
+        generatedPassword: null,
+      }),
+    );
+  });
+
+  it("reserves a booking for a FULL new hiker", async () => {
+    const tables = [{ id: 1, tableNumber: 4, seats: 4 }];
+    findOneUser.mockResolvedValue(null);
+    findByPkSlot.mockResolvedValue({
+      id: 10,
+      date: "2099-01-01",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+    sum.mockResolvedValue(0);
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue([{ ...tables[0], allocatedSeats: 1 }]);
+    createUser.mockResolvedValue({
+      id: 2,
+      firstName: "John",
+      lastName: "Doe",
+      email: "john.doe@mail.com",
+      phone: "1234567890",
+      isTemporary: false,
+    });
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 2,
+      slotId: 10,
+      numberOfPeople: 1,
+      status: "CONFIRMED",
+    });
+    bulkCreate.mockResolvedValue([]);
+
+    const res = await createBookingByStaff({
+      hiker: {
+        mode: "FULL",
+        firstName: "John",
+        lastName: "Doe",
+        email: "john.doe@mail.com",
+        phone: "1234567890",
+      },
+      slotId: 10,
+      numberOfPeople: 1,
+    });
+
+    expect(res).toEqual(
+      expect.objectContaining({
+        booking: expect.objectContaining({
+          hikerId: 2,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        hiker: expect.objectContaining({
+          firstName: "John",
+          lastName: "Doe",
+          email: "john.doe@mail.com",
+          phone: "1234567890",
+          isTemporary: false,
+        }),
+        generatedPassword: expect.any(String),
+      }),
+    );
+  });
+
+  it("reserves a booking for a QUICK new hiker", async () => {
+    const tables = [{ id: 1, tableNumber: 4, seats: 4 }];
+    findByPkUser.mockResolvedValue(null);
+    findByPkSlot.mockResolvedValue({
+      id: 10,
+      date: "2099-01-01",
+      startTime: "20:00:00",
+      status: "OPEN",
+      totalCapacity: 10,
+    });
+    sum.mockResolvedValue(0);
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue([{ ...tables[0], allocatedSeats: 1 }]);
+    createUser.mockResolvedValue({
+      id: 3,
+      firstName: "John",
+      lastName: "Doe",
+      email: null,
+      phone: "1234567890",
+      isTemporary: true,
+    });
+    create.mockResolvedValue({
+      id: 99,
+      hikerId: 3,
+      slotId: 10,
+      numberOfPeople: 1,
+      status: "CONFIRMED",
+    });
+    bulkCreate.mockResolvedValue([]);
+
+    const res = await createBookingByStaff({
+      hiker: {
+        mode: "QUICK",
+        firstName: "John",
+        lastName: "Doe",
+        phone: "1234567890",
+      },
+      slotId: 10,
+      numberOfPeople: 1,
+    });
+
+    expect(res).toEqual(
+      expect.objectContaining({
+        booking: expect.objectContaining({
+          hikerId: 3,
+          slotId: 10,
+          numberOfPeople: 1,
+        }),
+        hiker: expect.objectContaining({
+          firstName: "John",
+          lastName: "Doe",
+          email: null,
+          phone: "1234567890",
+          isTemporary: true,
+        }),
+        generatedPassword: null,
+      }),
     );
   });
 });
