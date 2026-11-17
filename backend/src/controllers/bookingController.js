@@ -1,4 +1,4 @@
-import {createBookingForHiker, createBookingByStaff, cancelBooking as cancelBookingService, modifyBookingForHiker, BookingError} from '../services/bookingService.js';
+import {createBookingForHiker, createBookingByStaff, cancelBooking as cancelBookingService, modifyBookingForHiker, getBookingForHiker, listBookingsForHiker, BookingError} from '../services/bookingService.js';
 
 import {notifyBookingConfirmed} from '../services/bookingNotifications.js';
 
@@ -163,6 +163,53 @@ export async function cancelBooking(req, res) {
 
     return res.status(500).json({
       error: 'Unable to cancel booking'
+    });
+  }
+}
+
+export async function getBooking(req, res) {
+  const bookingId = Number(req.params.id);
+
+  if (!Number.isSafeInteger(bookingId) || bookingId < 1) {
+    return res.status(400).json({error: 'bookingId must be a positive integer'});
+  }
+
+  try {
+    const booking = await getBookingForHiker({
+      bookingId,
+      hikerId: req.session.user.id
+    });
+
+    return res.status(200).json(booking);
+  }
+  catch (error) {
+    if (error instanceof BookingError) {
+      return res.status(error.status).json({
+        error: error.message
+      });
+    }
+
+    console.error('Fetching booking failed:', error);
+
+    return res.status(500).json({
+      error: 'Unable to retrieve booking'
+    });
+  }
+}
+
+export async function listBookings(req, res) {
+  try {
+    const bookings = await listBookingsForHiker({
+      hikerId: req.session.user.id
+    });
+
+    return res.status(200).json(bookings);
+  }
+  catch (error) {
+    console.error('Listing bookings failed:', error);
+
+    return res.status(500).json({
+      error: 'Unable to retrieve bookings'
     });
   }
 }
