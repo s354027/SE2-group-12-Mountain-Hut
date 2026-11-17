@@ -520,5 +520,87 @@ describe("MH-29 concurrent booking transaction handling", () => {
     expect(transaction).toHaveBeenCalledTimes(5); //5 because by default MAX_BUSY_RETRIES = 4
   });
   
+  it.each([[null], [[]]])("rejects an invalid dietary requirement object", async invalidRequirement => {
+      await expectBookingError(
+        createBookingForHiker({
+          ...validInput,
+          dietaryRequirements: [invalidRequirement]
+        }),
+        400,
+        "Each dietary requirement must be an object",
+      );
 
+      expect(transaction).not.toHaveBeenCalled();
+    }
+  );
+
+  it("rejects a dietary requirement with missing allergies", async () => {
+    await expectBookingError(
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: [
+          { description: "1 vegan" }
+        ]
+      }),
+      400,
+      "Each dietary requirement must have an allergies boolean",
+    );
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietary requirement with a non-string description", async () => {
+    await expectBookingError(
+      createBookingForHiker({
+        ...validInput,
+        dietaryRequirements: [
+          {
+            allergies: false,
+            description: 42
+          }
+        ]
+      }),
+      400,
+      "Each dietary requirement must have a non-empty description",
+    );
+
+    expect(transaction).not.toHaveBeenCalled();
+  });
+
+  it("accepts an omitted dietary requirements list", async () => {
+    findByPkUser.mockResolvedValue({ role: "HIKER" });
+    findByPkSlot.mockResolvedValue(futureSlot);
+    sum.mockResolvedValue(0);
+
+    const tables = [
+      {
+        id: 1,
+        tableNumber: 1,
+        seats: 4,
+        allocatedSeats: 4
+      }
+    ];
+
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue(tables);
+
+    create.mockResolvedValue({
+      id: 102,
+      hikerId: 1,
+      slotId: 10,
+      numberOfPeople: 4,
+      status: "CONFIRMED"
+    });
+
+    bulkCreate.mockResolvedValue([]);
+
+    await createBookingForHiker(validInput);
+
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dietaryRequirements: []
+      }),
+      expect.anything()
+    );
+  });
 });

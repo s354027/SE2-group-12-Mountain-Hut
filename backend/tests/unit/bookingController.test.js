@@ -258,4 +258,66 @@ describe("createBooking", () => {
     expect(res.status).toHaveBeenCalledWith(500);
     expect(res.json).toHaveBeenCalledWith({ error: "Unable to create booking" });
   });
+
+  it("rejects a null dietaryRequirements entry", async () => {
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({
+        slotId: 1,
+        numberOfPeople: 2,
+        dietaryRequirements: [null],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Each dietary requirement must be an object",
+    });
+    expect(createBookingForHiker).not.toHaveBeenCalled();
+  });
+
+  it("rejects an array as a dietaryRequirements entry", async () => {
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({
+        slotId: 1,
+        numberOfPeople: 2,
+        dietaryRequirements: [[]],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Each dietary requirement must be an object",
+    });
+    expect(createBookingForHiker).not.toHaveBeenCalled();
+  });
+
+  it("rejects a dietaryRequirements entry with a non-string description", async () => {
+    const res = mockRes();
+
+    await createBooking(
+      mockReq({
+        slotId: 1,
+        numberOfPeople: 2,
+        dietaryRequirements: [
+          {
+            allergies: false,
+            description: 42,
+          },
+        ],
+      }),
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Each dietary requirement must have a non-empty description",
+    });
+    expect(createBookingForHiker).not.toHaveBeenCalled();
+  });
 });
