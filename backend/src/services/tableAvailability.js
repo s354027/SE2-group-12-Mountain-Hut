@@ -8,7 +8,7 @@ import { models } from '../db/index.js';
  * @param {number} slotId - Time slot ID
  * @returns {Promise<Array>} Array of table objects with residual capacity (.seats)
  */
-export async function findFreeTables(slotId, { transaction } = {}) {
+export async function findFreeTables(slotId, { transaction, excludeBookingId } = {}) {
   const { DiningTable, Slot, Booking } = models;
 
   // 1. Retrieve all tables associated with the specified slot
@@ -30,13 +30,19 @@ export async function findFreeTables(slotId, { transaction } = {}) {
   const slotTables = slotWithTables.tables;
 
   // 2. Find active bookings (PENDING / CONFIRMED) for this slot
+  const bookingWhere = {
+    slotId,
+    status: { [Op.in]: ['PENDING', 'CONFIRMED'] }
+  };
+
+  if (Number.isSafeInteger(excludeBookingId)) {
+    bookingWhere.id = {
+      [Op.ne]: excludeBookingId
+    };
+  }
+
   const activeBookings = await Booking.findAll({
-    where: {
-      slotId: slotId,
-      status: {
-        [Op.in]: ['PENDING', 'CONFIRMED']
-      }
-    },
+    where: bookingWhere,
     include: [
       {
         model: DiningTable,

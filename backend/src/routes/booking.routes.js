@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js';
-import { createBooking, createStaffBooking, cancelBooking } from '../controllers/bookingController.js';
+import { createBooking, createStaffBooking, cancelBooking, modifyBooking } from '../controllers/bookingController.js';
 
 const router = Router();
 
@@ -27,6 +27,18 @@ router.post(
   requireAuth,
   requireRole('EMPLOYEE'),
   createStaffBooking
+);
+
+/**
+ * PATCH /api/bookings/:id
+ * Modify a booking owned by the authenticated hiker.
+ */
+router.patch(
+  '/:id',
+  requireAuth,
+  requireRole('HIKER'),
+  requirePasswordChanged,
+  modifyBooking
 );
 
 /**
