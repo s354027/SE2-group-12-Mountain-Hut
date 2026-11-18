@@ -14,6 +14,7 @@ vi.mock("nodemailer", () => ({
 
 import {
   sendBookingConfirmation,
+  sendBookingModification,
   verifyTransporter,
 } from "../../src/services/emailService.js";
 
@@ -73,6 +74,31 @@ describe("emailService", () => {
     );
 
     expect(sendMail.mock.calls[0][0].html).toContain("None specified");
+  });
+
+  it("sends a distinct booking update email", async () => {
+    sendMail.mockResolvedValue({ messageId: "message-123" });
+
+    await sendBookingModification(
+      "hiker@example.com",
+      "John Doe",
+      42,
+      "01/06/2024",
+      "10:00",
+      "11:00",
+      3,
+      "Window seat",
+    );
+
+    expect(sendMail).toHaveBeenCalledWith({
+      from: "<noreply@mountainhut.it>",
+      to: "hiker@example.com",
+      subject: "Booking Updated #42",
+      html: expect.stringContaining("Your Reservation Has Been Updated"),
+    });
+    expect(sendMail.mock.calls[0][0].html).toContain("updated details");
+    expect(sendMail.mock.calls[0][0].html).toContain("3 people");
+    expect(sendMail.mock.calls[0][0].html).toContain("Window seat");
   });
 
   it("returns false when sending the email fails", async () => {
