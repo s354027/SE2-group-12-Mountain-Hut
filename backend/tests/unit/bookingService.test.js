@@ -568,27 +568,27 @@ describe("MH-29 concurrent booking transaction handling", () => {
 });
 
 describe("MH-61 party requirements", () => {
-  it.each([[null], [[]]])("rejects an invalid dietary requirement object", async invalidRequirement => {
+  it.each([[null], [[]]])(
+    "rejects an invalid dietary requirement object",
+    async (invalidRequirement) => {
       await expectBookingError(
         createBookingForHiker({
           ...validInput,
-          dietaryRequirements: [invalidRequirement]
+          dietaryRequirements: [invalidRequirement],
         }),
         400,
         "Each dietary requirement must be an object",
       );
 
       expect(transaction).not.toHaveBeenCalled();
-    }
+    },
   );
 
   it("rejects a dietary requirement with missing allergies", async () => {
     await expectBookingError(
       createBookingForHiker({
         ...validInput,
-        dietaryRequirements: [
-          { description: "1 vegan" }
-        ]
+        dietaryRequirements: [{ description: "1 vegan" }],
       }),
       400,
       "Each dietary requirement must have an allergies boolean",
@@ -604,9 +604,9 @@ describe("MH-61 party requirements", () => {
         dietaryRequirements: [
           {
             allergies: false,
-            description: 42
-          }
-        ]
+            description: 42,
+          },
+        ],
       }),
       400,
       "Each dietary requirement must have a non-empty description",
@@ -625,8 +625,8 @@ describe("MH-61 party requirements", () => {
         id: 1,
         tableNumber: 1,
         seats: 4,
-        allocatedSeats: 4
-      }
+        allocatedSeats: 4,
+      },
     ];
 
     findFreeTables.mockResolvedValue(tables);
@@ -637,7 +637,7 @@ describe("MH-61 party requirements", () => {
       hikerId: 1,
       slotId: 10,
       numberOfPeople: 4,
-      status: "CONFIRMED"
+      status: "CONFIRMED",
     });
 
     bulkCreate.mockResolvedValue([]);
@@ -646,9 +646,9 @@ describe("MH-61 party requirements", () => {
 
     expect(create).toHaveBeenCalledWith(
       expect.objectContaining({
-        dietaryRequirements: []
+        dietaryRequirements: [],
       }),
-      expect.anything()
+      expect.anything(),
     );
   });
 });
@@ -1051,6 +1051,32 @@ describe("validatesStaffHiker", () => {
         }),
         generatedPassword: null,
       }),
+    );
+  });
+
+  it.each([
+    {
+      hiker: {
+        mode: "QUICK",
+        firstName: "John",
+        lastName: 123,
+        phone: "34569205943",
+      },
+      fieldName: "Last name",
+    },
+    {
+      hiker: { mode: "QUICK", firstName: "John", lastName: "Doe", phone: [] },
+      fieldName: "Phone",
+    },
+  ])("rejects optional fields if invalid", async ({ hiker, fieldName }) => {
+    await expectBookingError(
+      createBookingByStaff({
+        hiker,
+        slotId: 10,
+        numberOfPeople: 0,
+      }),
+      400,
+      `${fieldName} must be a string`,
     );
   });
 });
