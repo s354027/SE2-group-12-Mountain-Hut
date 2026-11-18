@@ -78,9 +78,9 @@ export default function RequirementsModal({
                     checked={allergies}
                     onChange={(event) => setAllergies(event.target.checked)}
                   />
-                  This is an allergy (important)
+                  This is an allergy
                 </label>
-                <p className="allergy-notice" role="note">
+                <p className="allergy-notice ms-1" role="note">
                   Allergies will be clearly flagged for the hut staff.
                 </p>
               </div>
