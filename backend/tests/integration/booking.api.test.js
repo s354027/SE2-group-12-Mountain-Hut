@@ -37,7 +37,7 @@ beforeAll(async () => {
     ...HIKER,
     passwordHash: await hashPassword(PASSWORD),
   });
-  
+
   await models.User.create({
     ...EMPLOYEE,
     passwordHash: await hashPassword(PASSWORD),
@@ -380,5 +380,46 @@ describe("POST /api/bookings", () => {
       expect(await models.User.count()).toBe(usersBefore);
       expect(await models.Booking.count()).toBe(bookingsBefore);
     });
+  });
+
+  it("rejects non boolean allergy flag", async () => {
+    const browser = await loginAsEmployee();
+    const usersBefore = await models.User.count();
+    const bookingsBefore = await models.Booking.count();
+
+    const response = await browser("POST", "/api/bookings/staff", {
+      hiker: { mode: "QUICK", firstName: "John" },
+      slotId: slot.id,
+      numberOfPeople: 2,
+      allergyFlag: "invalid",
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.data).toMatchObject({
+      error: "allergyFlag must be a boolean",
+    });
+    expect(await models.User.count()).toBe(usersBefore);
+    expect(await models.Booking.count()).toBe(bookingsBefore);
+  });
+
+  it("rejects invalid allergy description", async () => {
+    const browser = await loginAsEmployee();
+    const usersBefore = await models.User.count();
+    const bookingsBefore = await models.Booking.count();
+
+    const response = await browser("POST", "/api/bookings/staff", {
+      hiker: { mode: "QUICK", firstName: "John" },
+      slotId: slot.id,
+      numberOfPeople: 2,
+      allergyFlag: true,
+      allergyDescription: false,
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.data).toMatchObject({
+      error: "Invalid allergyDescription",
+    });
+    expect(await models.User.count()).toBe(usersBefore);
+    expect(await models.Booking.count()).toBe(bookingsBefore);
   });
 });
