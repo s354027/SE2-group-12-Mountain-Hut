@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import RequirementsList from "../components/RequirementsList.jsx";
@@ -36,6 +36,10 @@ export default function Booking() {
   const [partyRequirements, setPartyRequirements] = useState([]);
   const [showRequirementsModal, setShowRequirementsModal] = useState(false);
   const [editingRequirementIndex, setEditingRequirementIndex] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
 
   const editingRequirement =
     editingRequirementIndex === null
@@ -119,7 +123,9 @@ export default function Booking() {
           3. Confirmed
         </span>
       </div>
-      <h1 className="mt-3">{confirmation ? "Booking confirmed" : "Book a table"}</h1>
+      <h1 className="mt-3">
+        {confirmation ? "Booking confirmed" : "Book a table"}
+      </h1>
       <p className="booking-intro">
         {confirmation
           ? confirmation
@@ -187,8 +193,9 @@ export default function Booking() {
               <div>
                 <h2>Party requirements</h2>
                 <p className="mt-3">
-                  Add one or more allergies or dietary requirements. Mark allergies so staff
-                  know they are important.
+                  {confirmation
+                    ? "Your specified party requirements."
+                    : "Add one or more allergies or dietary requirements. Mark allergies so staff know they are important."}
                 </p>
               </div>
             </div>
