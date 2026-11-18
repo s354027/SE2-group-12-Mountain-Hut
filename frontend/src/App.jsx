@@ -9,6 +9,7 @@ import Search from "./pages/Search.jsx";
 import Booking from "./pages/Booking.jsx";
 import StaffSlots from "./pages/StaffSlots.jsx";
 import NotFound from "./pages/NotFound.jsx";
+import BookingsPage from "./pages/hiker/BookingsPage.jsx";
 
 // One route per page. Each person fills in "their" page (see README).
 export default function App() {
@@ -24,6 +25,7 @@ export default function App() {
         {/* hiker only */}
         <Route element={<ProtectedRoute roles={["HIKER"]} />}>
           <Route path="/booking" element={<Booking />} />
+          <Route path="/bookings" element={<BookingsPage />} />
         </Route>
 
         {/* hut staff only */}

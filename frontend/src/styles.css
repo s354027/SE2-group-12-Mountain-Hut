@@ -237,7 +237,6 @@ body {
 .availability-result {
   margin: 24px 0 28px;
   padding: 22px;
-  background: #ffffff;
   border: 1px solid #d9ded8;
   border-radius: 14px;
 }
@@ -255,12 +254,16 @@ body {
 .booking-summary > div {
   display: grid;
   grid-template-columns: 140px 1fr;
+  align-items: baseline;
   gap: 16px;
   padding: 9px 0;
 }
 .booking-summary dt {
-  font-size: 0.85rem;
-  font-weight: 600;
+  color: #788477;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 .booking-summary dd {
   margin: 0;
@@ -320,7 +323,6 @@ body {
 .party-requirements-section {
   margin: 24px 0 28px;
   padding: 22px;
-  background: #ffffff;
   border: 1px solid #d9ded8;
   border-radius: 14px;
 }
@@ -338,8 +340,9 @@ body {
 }
 .requirements-heading h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: 1.2rem;
   color: #285943;
+  font-weight: 600;
 }
 .requirements-heading p {
   margin: 6px 0 0;
@@ -370,7 +373,8 @@ body {
   padding: 22px 24px;
   color: #000;
   background: var(--bs-modal-bg);
-  border-bottom: var(--bs-modal-header-border-width) solid var(--bs-modal-header-border-color);
+  border-bottom: var(--bs-modal-header-border-width) solid
+    var(--bs-modal-header-border-color);
 }
 .requirements-modal .modal-body {
   padding: 24px;
@@ -406,7 +410,8 @@ body {
 .requirements-modal .modal-footer {
   padding: 16px 24px;
   background: var(--bs-modal-bg);
-  border-top: var(--bs-modal-footer-border-width) solid var(--bs-modal-footer-border-color);
+  border-top: var(--bs-modal-footer-border-width) solid
+    var(--bs-modal-footer-border-color);
 }
 .requirements-modal .modal-footer .btn {
   min-width: 132px;
@@ -422,7 +427,7 @@ body {
 }
 .party-requirements {
   display: grid;
-  gap: 10px;
+  gap: 0;
   margin: 16px 0 0;
   padding: 0;
   list-style: none;
@@ -432,9 +437,10 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  background: #f5f7f5;
+  padding: 10px 0;
+}
+.party-requirement + .party-requirement {
+  border-top: 1px solid #d9ded8;
 }
 .party-requirement-details,
 .party-requirement-actions {
@@ -445,29 +451,56 @@ body {
 .party-requirement-details {
   flex-wrap: wrap;
 }
+.requirement-description {
+  font-weight: 600;
+}
 .party-requirement-actions {
   flex: 0 0 auto;
 }
-.party-requirement-actions .btn {
-  padding: 2px 4px;
+.party-requirement-actions button {
+  min-height: 36px;
+  padding: 7px 13px;
+  border-radius: 8px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
 }
-.party-requirement-actions .requirement-edit-button {
-  color: #285943;
-  border: 1px solid #285943;
+.party-requirement-actions .btn-edit {
+  color: #244c3d;
+  background: #f4f7f1;
+  border: 1px solid #b7c8ba;
 }
-.party-requirement-actions .requirement-edit-button:hover {
-  color: #fff;
-  background-color: #285943;
-  border-color: #285943;
+.party-requirement-actions .btn-edit:hover {
+  background: #e6efe5;
+  border-color: #244c3d;
 }
-.allergy-flag {
+.party-requirement-actions .btn-delete {
+  color: #9b483a;
+  background: #fff7f3;
+  border: 1px solid #e9c9bd;
+}
+.party-requirement-actions .btn-delete:hover {
+  color: #7b3028;
+  background: #fbe8e1;
+  border-color: #d79e8b;
+}
+.requirement-type-badge {
+  display: inline-flex;
+  align-items: center;
   padding: 3px 7px;
   border-radius: 4px;
-  background: #d43327;
-  color: #fff;
+  color: #25332d;
   font-size: 0.75rem;
   font-weight: 700;
   white-space: nowrap;
+}
+.allergy-flag {
+  background: #fde9e7;
+  color: #a52920;
+}
+.diet-flag {
+  background: #e5eee3;
+  color: #285943;
 }
 .requirement-allergy-checkbox {
   margin-top: 16px;
@@ -1417,6 +1450,13 @@ button:active:not(:disabled) {
 }
 .booking-actions {
   gap: 12px;
+}
+.booking-actions--confirmation {
+  justify-content: flex-end;
+}
+.booking-actions--confirmation .btn-primary {
+  flex: 0 0 auto;
+  width: auto;
 }
 .booking-summary,
 .availability-result,

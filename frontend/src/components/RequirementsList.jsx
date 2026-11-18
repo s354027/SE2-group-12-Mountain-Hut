@@ -15,17 +15,23 @@ export default function RequirementsList({
           className="party-requirement"
         >
           <div className="party-requirement-details">
-            <span>{requirement.description}</span>
-                        {requirement.allergies && (
-              <span className="allergy-flag">Allergy</span>
-            )}
+            <span
+              className={`requirement-type-badge ${
+                requirement.allergies ? "allergy-flag" : "diet-flag"
+              }`}
+            >
+              {requirement.allergies ? "Allergy" : "Diet"}
+            </span>
+            <span className="requirement-description">
+              {requirement.description}
+            </span>
           </div>
           {(onEdit || onRemove) && (
             <div className="party-requirement-actions">
               {onEdit && (
                 <button
                   type="button"
-                  className="btn requirement-edit-button d-flex align-items-center px-2"
+                  className="btn-edit d-flex align-items-center"
                   onClick={() => onEdit(index)}
                   aria-label={`Edit requirement: ${requirement.description}`}
                 >
@@ -36,7 +42,7 @@ export default function RequirementsList({
               {onRemove && (
                 <button
                   type="button"
-                  className="btn btn-outline-danger d-flex align-items-center px-2"
+                  className="btn-delete d-flex align-items-center"
                   onClick={() => onRemove(index)}
                   aria-label={`Remove requirement: ${requirement.description}`}
                 >

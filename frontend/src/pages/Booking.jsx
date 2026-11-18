@@ -24,14 +24,19 @@ function getSlotEndTime(startTime, endTime, duration) {
 
 export default function Booking() {
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const location = useLocation();
+  const { state } = location;
   const availability = state?.availability ?? null;
   const date = availability?.date ?? state?.date;
   const requestedTime = state?.time;
   const numberOfPeople = availability?.partySize ?? state?.numberOfPeople;
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [confirmation, setConfirmation] = useState(null);
+  const [confirmation, setConfirmation] = useState(
+    state?.confirmed === true
+      ? "Your table has been reserved successfully. You will receive a confirmation email."
+      : (state?.confirmed ?? null),
+  );
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
   const [partyRequirements, setPartyRequirements] = useState([]);
   const [showRequirementsModal, setShowRequirementsModal] = useState(false);
@@ -82,9 +87,13 @@ export default function Booking() {
         numberOfPeople: Number(numberOfPeople),
         dietaryRequirements: partyRequirements,
       });
-      setConfirmation(
-        "Your table has been reserved successfully. You will receive a confirmation email.",
-      );
+      const message =
+        "Your table has been reserved successfully. You will receive a confirmation email.";
+      setConfirmation(message);
+      navigate(`${location.pathname}${location.search}${location.hash}`, {
+        replace: true,
+        state: { ...state, confirmed: message },
+      });
     } catch (requestError) {
       if (
         requestError.status === 409 &&
@@ -195,7 +204,7 @@ export default function Booking() {
                 <p className="mt-3">
                   {confirmation
                     ? "Your specified party requirements."
-                    : "Add one or more allergies or dietary requirements. Mark allergies so staff know they are important."}
+                    : "Add any allergies or dietary requirements. Mark allergies to alert staff."}
                 </p>
               </div>
             </div>
@@ -221,6 +230,7 @@ export default function Booking() {
                     setShowRequirementsModal(true);
                   }}
                 >
+                  <span className="bi bi-plus-lg me-2" aria-hidden="true" />
                   Add
                 </button>
               </div>
@@ -251,6 +261,17 @@ export default function Booking() {
                 </button>
               </div>
             </form>
+          )}
+
+          {confirmation && (
+            <div className="booking-actions booking-actions--confirmation">
+              <button
+                className="btn-primary"
+                onClick={() => navigate("/bookings")}
+              >
+                View your bookings
+              </button>
+            </div>
           )}
         </>
       )}

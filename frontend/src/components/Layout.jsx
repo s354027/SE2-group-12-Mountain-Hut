@@ -5,6 +5,7 @@ export default function Layout() {
   const { user, logout } = useAuth();
   const isStaff = user && ['EMPLOYEE', 'WARDEN'].includes(user.role);
   const isWarden = user?.role === 'WARDEN';
+  const isHiker = user?.role === 'HIKER';
 
   return (
     <div className="app-shell">
@@ -16,6 +17,7 @@ export default function Layout() {
         <nav aria-label="Main navigation" className="main-nav">
           <NavLink to="/" end>Home</NavLink>
           <NavLink to="/search">Availability</NavLink>
+          {isHiker && <NavLink to="/bookings">Bookings</NavLink>}
           {isStaff && <NavLink to="/staff/slots">Manage slots</NavLink>}
           {isWarden && <NavLink to="/admin/staff/new">New staff</NavLink>}
         </nav>
