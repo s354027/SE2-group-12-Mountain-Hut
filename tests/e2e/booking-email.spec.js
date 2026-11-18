@@ -128,7 +128,7 @@ test("@email includes allergy requirements in booking confirmation", async ({
     .fill("Severe peanut allergy");
 
   await page
-    .getByLabel("This is an allergy (important)")
+    .getByLabel("This is an allergy")
     .check();
 
   await page
