@@ -155,10 +155,71 @@ body {
   font-size: 2rem;
   letter-spacing: -0.02em;
 }
-.booking-intro {
+.booking-intro, .hiker-bookings-intro {
   margin: 0 0 28px;
   color: #66736d;
   line-height: 1.6;
+}
+.hiker-bookings-list {
+  display: grid;
+  gap: 16px;
+}
+.hiker-bookings-loading {
+  min-height: 40vh;
+}
+.hiker-booking-card {
+  padding: 20px;
+  border: 1px solid #dfe6e1;
+  border-radius: 12px;
+  background: #fff;
+}
+.hiker-booking-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.hiker-booking-card-heading h2 {
+  margin: 0;
+  color: var(--alpine-deep);
+  font-size: 1.25rem;
+}
+.hiker-booking-card-heading p {
+  margin: 6px 0 0;
+  color: #66736d;
+}
+.hiker-booking-status {
+  color: #53675b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.hiker-booking-details {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+.hiker-booking-details div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.35fr) 1fr;
+  gap: 12px;
+}
+.hiker-booking-details dt {
+  color: #66736d;
+  font-weight: 600;
+}
+.hiker-booking-details dd {
+  margin: 0;
+}
+.hiker-booking-edit {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+.hiker-booking-edit > label:not(.checkbox-label) {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
 }
 .eyebrow {
   display: block;
@@ -259,22 +320,18 @@ body {
   padding: 9px 0;
 }
 .booking-summary dt {
-  color: #788477;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: #66736d;
+  font-size: 1rem;
+  font-weight: 600;
 }
 .booking-summary dd {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
 }
-.booking-summary > div:nth-child(2) dd,
+/*.booking-summary > div:nth-child(2) dd,
 .booking-summary > div:nth-child(3) dd,
 .booking-summary > div:nth-child(4) dd {
   font-size: 0.95rem;
-}
+}*/
 .booking-summary > div:last-child dd {
   display: flex;
   gap: 16px;
@@ -285,8 +342,8 @@ body {
   flex: 0 0 auto;
   display: inline-flex;
   gap: 4px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  /*font-size: 0.95rem;*/
+  font-weight: 400;
 }
 .table-allocation strong {
   font-weight: inherit;
@@ -452,7 +509,7 @@ body {
   flex-wrap: wrap;
 }
 .requirement-description {
-  font-weight: 600;
+  font-weight: 400;
 }
 .party-requirement-actions {
   flex: 0 0 auto;
@@ -557,6 +614,13 @@ body {
   }
   .booking-actions {
     flex-direction: column-reverse;
+  }
+  .hiker-bookings {
+    margin: 24px auto;
+    padding: 24px;
+  }
+  .hiker-bookings h1 {
+    font-size: 1.65rem;
   }
 }
 
@@ -1436,11 +1500,11 @@ button:active:not(:disabled) {
 .form-success {
   border-radius: 10px;
 }
-.booking-card {
+.booking-card, .hiker-bookings {
   max-width: 780px;
   padding: clamp(18px, 3vw, 32px);
 }
-.booking-card h1 {
+.booking-card h1, .hiker-bookings h1 {
   font-family: Georgia, serif;
   font-weight: 500;
   color: var(--alpine-deep);
@@ -1458,6 +1522,7 @@ button:active:not(:disabled) {
   flex: 0 0 auto;
   width: auto;
 }
+
 .booking-summary,
 .availability-result,
 .table-allocation {
