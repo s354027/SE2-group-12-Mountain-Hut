@@ -107,7 +107,7 @@ export default function Booking() {
   return (
     <section className="booking-card">
       <div className="booking-progress" aria-label="Booking progress">
-        <span className="progress-step complete">1. Availability</span>
+        <span className="progress-step complete">1. Find a table</span>
         <span className="progress-line" />
         <span
           className={`progress-step ${confirmation ? "complete" : "current"}`}
@@ -119,7 +119,7 @@ export default function Booking() {
           3. Confirmed
         </span>
       </div>
-      <h1>{confirmation ? "Booking confirmed" : "Book a table"}</h1>
+      <h1 className="mt-3">{confirmation ? "Booking confirmed" : "Book a table"}</h1>
       <p className="booking-intro">
         {confirmation
           ? confirmation

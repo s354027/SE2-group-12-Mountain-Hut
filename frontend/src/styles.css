@@ -146,11 +146,11 @@ body {
 }
 .booking-card {
   max-width: 680px;
-  margin: 48px auto;
-  padding: 16px 8px;
+  margin: 0 auto;
+  padding: 0 8px !important;
 }
 .booking-card h1 {
-  margin: 14px 0 8px;
+  margin: 0;
   color: #26332e;
   font-size: 2rem;
   letter-spacing: -0.02em;
