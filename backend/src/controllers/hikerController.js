@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import { BookingError, getHikerBookings as getHikerBookingsService } from '../services/bookingService.js';
 
 const MIN_QUERY_LENGTH = 2;
 const MAX_RESULTS = 20;
@@ -8,6 +9,29 @@ const MAX_RESULTS = 20;
  * by name, phone or email before entering a reservation (MH-07).
  */
 export function createHikerController({ User, sequelize }) {
+  async function getHikerBookings(req, res) {
+    const hikerId = Number(req.params.id);
+    const upcoming = req.query?.upcoming;
+
+    if (upcoming !== undefined && upcoming !== 'true' && upcoming !== 'false') {
+      return res.status(400).json({ error: 'upcoming must be true or false' });
+    }
+
+    try {
+      const bookings = await getHikerBookingsService(hikerId, {
+        upcomingOnly: upcoming === 'true'
+      });
+      return res.status(200).json(bookings);
+    } catch (err) {
+      if (err instanceof BookingError) {
+        return res.status(err.status).json({ error: err.message });
+      }
+
+      console.error('Hiker booking retrieval failed:', err);
+      return res.status(500).json({ error: 'Unable to retrieve hiker bookings' });
+    }
+  }
+
   async function searchHikers(req, res) {
     const query = typeof req.query?.q === 'string' ? req.query.q.trim() : '';
 
@@ -48,5 +72,5 @@ export function createHikerController({ User, sequelize }) {
     }
   }
 
-  return { searchHikers };
+  return { searchHikers, getHikerBookings };
 }
