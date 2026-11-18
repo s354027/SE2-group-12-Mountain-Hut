@@ -1,6 +1,6 @@
 import {createBookingForHiker, createBookingByStaff, cancelBooking as cancelBookingService, modifyBookingForHiker, BookingError} from '../services/bookingService.js';
 
-import {notifyBookingConfirmed} from '../services/bookingNotifications.js';
+import {notifyBookingConfirmed, notifyBookingModified} from '../services/bookingNotifications.js';
 
 /**
  * Handles HTTP requests to create a booking.
@@ -205,6 +205,16 @@ export async function modifyBooking(req, res) {
       allergyDescription: body.allergyDescription,
       dietaryRequirements: body.dietaryRequirements
     });
+
+    // Send the updated reservation details after the change commits.
+    try {
+      await notifyBookingModified(booking.id);
+    } catch (error) {
+      console.error(
+        'Booking modification notification failed:',
+        error
+      );
+    }
   
     return res.status(200).json(booking);
   } 
