@@ -16,12 +16,14 @@ vi.mock("../../src/services/bookingService.js", () => {
   return { createBookingForHiker, createBookingByStaff, BookingError };
 });
 
-const { notifyBookingConfirmed } = vi.hoisted(() => ({
+const { notifyBookingConfirmed, notifyBookingModified } = vi.hoisted(() => ({
   notifyBookingConfirmed: vi.fn(),
+  notifyBookingModified: vi.fn(),
 }));
 
 vi.mock("../../src/services/bookingNotifications.js", () => ({
   notifyBookingConfirmed,
+  notifyBookingModified,
 }));
 
 import {

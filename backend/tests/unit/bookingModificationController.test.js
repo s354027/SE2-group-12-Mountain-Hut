@@ -7,7 +7,11 @@ vi.mock('../../src/services/bookingService.js', () => {
   }
   return { modifyBookingForHiker, BookingError };
 });
-vi.mock('../../src/services/bookingNotifications.js', () => ({ notifyBookingConfirmed: vi.fn() }));
+const { notifyBookingModified } = vi.hoisted(() => ({ notifyBookingModified: vi.fn() }));
+vi.mock('../../src/services/bookingNotifications.js', () => ({
+  notifyBookingConfirmed: vi.fn(),
+  notifyBookingModified
+}));
 
 import { modifyBooking } from '../../src/controllers/bookingController.js';
 import { BookingError } from '../../src/services/bookingService.js';
@@ -53,6 +57,7 @@ describe('modifyBooking controller', () => {
     }));
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(result);
+    expect(notifyBookingModified).toHaveBeenCalledWith(result.id);
   });
   it.each([ [403, 'Cannot modify another hiker booking'], [404, 'Booking not found'], [409, 'Booking is not active'] ])('maps BookingError %i to HTTP response', async (status, message) => {
     modifyBookingForHiker.mockRejectedValue(new BookingError(status, message));

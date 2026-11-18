@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Op } from "sequelize";
 
 const {
   findByPkUser,
   findOneUser,
   findByPkSlot,
+  findAllBooking,
   findOne,
   sum,
   create,
@@ -13,6 +15,7 @@ const {
   findByPkUser: vi.fn(),
   findOneUser: vi.fn(),
   findByPkSlot: vi.fn(),
+  findAllBooking: vi.fn(),
   findOne: vi.fn(),
   sum: vi.fn(),
   create: vi.fn(),
@@ -37,7 +40,7 @@ vi.mock("../../src/db/index.js", () => ({
   models: {
     User: { findByPk: findByPkUser, findOne: findOneUser, create: createUser },
     Slot: { findByPk: findByPkSlot },
-    Booking: { findOne, sum, create },
+    Booking: { findOne, findAll: findAllBooking, sum, create },
     BookingTable: { bulkCreate },
   },
 }));
@@ -53,6 +56,7 @@ vi.mock("../../src/services/partySplit.js", () => ({
 import {
   createBookingByStaff,
   createBookingForHiker,
+  getHikerBookings,
   BookingError,
 } from "../../src/services/bookingService.js";
 
@@ -81,6 +85,38 @@ beforeEach(() => {
   transaction.mockImplementation((_options, callback) => callback({}));
 
   findOne.mockResolvedValue(null); //by default: the hiker doesn't have a reservation
+});
+
+describe("getHikerBookings", () => {
+  it("returns all bookings by default without a slot date filter", async () => {
+    findAllBooking.mockResolvedValue([]);
+
+    await expect(getHikerBookings(7)).resolves.toEqual([]);
+
+    const query = findAllBooking.mock.calls[0][0];
+    const slotInclude = query.include.find(include => include.as === "slot");
+
+    expect(slotInclude.where).toBeUndefined();
+    expect(slotInclude.required).toBeUndefined();
+  });
+
+  it("only queries bookings whose slot date is later than today when requested", async () => {
+    const now = new Date();
+    const today = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    findAllBooking.mockResolvedValue([]);
+
+    await expect(getHikerBookings(7, { upcomingOnly: true })).resolves.toEqual([]);
+
+    const query = findAllBooking.mock.calls[0][0];
+    const slotInclude = query.include.find(include => include.as === "slot");
+
+    expect(slotInclude.where).toEqual({ date: { [Op.gt]: today } });
+    expect(slotInclude.required).toBe(true);
+  });
 });
 
 describe("createBookingForHiker", () => {

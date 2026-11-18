@@ -33,6 +33,16 @@ function expectError(promise, status) {
   return expect(promise).rejects.toMatchObject({ name: 'BookingError', status });
 }
 
+function slotDateTimeAfter(minutes) {
+  const date = new Date(Date.now() + minutes * 60 * 1000);
+  const pad = value => String(value).padStart(2, '0');
+
+  return {
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    startTime: `${pad(date.getHours())}:${pad(date.getMinutes())}:00`
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mocks.transaction.mockImplementation((_options, callback) => callback({}));
@@ -72,6 +82,15 @@ describe('modifyBookingForHiker service', () => {
   it('rejects invalid allergy details', async () => {
     await expectError(modifyBookingForHiker({ ...input, allergyFlag: true, allergyDescription: '' }), 400);
   });
+  it('returns 404 when the booking source slot is missing', async () => {
+    mocks.slotFindByPk.mockResolvedValue(null);
+    await expect(modifyBookingForHiker(input)).rejects.toMatchObject({
+      name: 'BookingError',
+      status: 404,
+      message: 'Slot not found'
+    });
+    expect(booking.update).not.toHaveBeenCalled();
+  });
   it('updates dietary requirements without reallocating tables', async () => {
     const result = await modifyBookingForHiker({ ...input, dietaryRequirements: [{ allergies: false, description: ' Vegan ' }] });
     expect(booking.update).toHaveBeenCalledWith(expect.objectContaining({
@@ -82,12 +101,32 @@ describe('modifyBookingForHiker service', () => {
     expect(result.tables).toEqual([{ id: 1, tableNumber: 1, allocatedSeats: 2 }]);
   });
   it('rejects unavailable target slot', async () => {
-    mocks.slotFindByPk.mockResolvedValue({ id: 11, status: 'CLOSED' });
+    mocks.slotFindByPk
+      .mockResolvedValueOnce({ id: 10, date: '2099-01-01', startTime: '12:00:00', status: 'OPEN' })
+      .mockResolvedValueOnce({ id: 11, status: 'CLOSED' });
     await expectError(modifyBookingForHiker({ ...input, slotId: 11 }), 409);
   });
-  it('rejects booking changes past the deadline', async () => {
-    mocks.slotFindByPk.mockResolvedValue({ id: 11, status: 'OPEN', date: '2000-01-01', startTime: '12:00:00', totalCapacity: 10 });
-    await expectError(modifyBookingForHiker({ ...input, slotId: 11 }), 409);
+  it('rejects a target slot starting less than two hours from now', async () => {
+    const targetDateTime = slotDateTimeAfter(60);
+    mocks.slotFindByPk
+      .mockResolvedValueOnce({ id: 10, date: '2099-01-01', startTime: '12:00:00', status: 'OPEN' })
+      .mockResolvedValueOnce({ id: 11, status: 'OPEN', ...targetDateTime, totalCapacity: 10 });
+    await expect(modifyBookingForHiker({ ...input, slotId: 11 })).rejects.toMatchObject({
+      name: 'BookingError',
+      status: 409,
+      message: 'Booking deadline has passed'
+    });
+  });
+  it('rejects a target slot with an invalid start date', async () => {
+    mocks.slotFindByPk
+      .mockResolvedValueOnce({ id: 10, date: '2099-01-01', startTime: '12:00:00', status: 'OPEN' })
+      .mockResolvedValueOnce({ id: 11, status: 'OPEN', date: 'invalid-date', startTime: '12:00:00', totalCapacity: 10 });
+    await expect(modifyBookingForHiker({ ...input, slotId: 11 })).rejects.toMatchObject({
+      name: 'BookingError',
+      status: 409,
+      message: 'Booking deadline has passed'
+    });
+    expect(mocks.destroy).not.toHaveBeenCalled();
   });
   it('rejects another active booking for the target slot', async () => {
     mocks.findOne.mockResolvedValue({ id: 15 });
