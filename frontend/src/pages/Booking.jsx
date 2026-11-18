@@ -156,18 +156,18 @@ export default function Booking() {
               <dd>{date}</dd>
             </div>
             <div>
-              <dt>Requested time</dt>
+              <dt>Arrival Time</dt>
               <dd>{formatTime(requestedTime)}</dd>
             </div>
             <div>
-              <dt>Party size</dt>
+              <dt>Guests</dt>
               <dd>
                 {numberOfPeople}{" "}
                 {Number(numberOfPeople) === 1 ? "person" : "people"}
               </dd>
             </div>
             <div>
-              <dt>Service slot</dt>
+              <dt>Slot</dt>
               <dd>
                 {formatTime(availability.startTime)}-
                 {getSlotEndTime(
@@ -178,14 +178,14 @@ export default function Booking() {
               </dd>
             </div>
             <div>
-              <dt>Table allocation</dt>
+              <dt>Tables</dt>
               <dd>
                 {availability.tables.map((table) => (
                   <span key={table.id} className="table-allocation">
                     <strong>Table {table.tableNumber}</strong>
                     <span>
-                      · {table.allocatedSeats}{" "}
-                      {table.allocatedSeats === 1 ? "seat" : "seats"}
+                      ({table.allocatedSeats}{" "}
+                      {table.allocatedSeats === 1 ? "seat" : "seats"})
                     </span>
                   </span>
                 ))}
