@@ -1,4 +1,37 @@
 services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mountain-hut-backend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      HOST: 0.0.0.0
+      FRONTEND_ORIGIN: http://localhost:5173
+      DB_PATH: /app/data/mountain-hut.sqlite
+      SMTP_HOST: mailpit
+      SMTP_PORT: 1025
+    volumes:
+      - backend_data:/app/data
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mailpit
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    container_name: mountain-hut-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_URL: http://backend:3000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
   mailpit:
     image: axllent/mailpit
     container_name: mailpit
@@ -13,3 +46,7 @@ services:
       MP_DATABASE: /data/mailpit.db
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
+
+volumes:
+  backend_data:
+  mailpit_data:
