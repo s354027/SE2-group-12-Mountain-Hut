@@ -161,9 +161,7 @@ function SignedInHome({ role }) {
 }
 
 export default function Home() {
-  const { user, loading } = useAuth();
-
-  if (loading) return null; // avoid flashing the guest page while the session loads
+  const { user } = useAuth();
 
   if (user && roleHomeContent[user.role]) {
     return <SignedInHome role={user.role} />;

@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import RequirementsList from "../components/RequirementsList.jsx";
 import RequirementsModal from "../components/RequirementsModal.jsx";
-import BookingProgress from "../components/BookingProgress.jsx";
 
 function formatTime(time) {
   return time ? time.slice(0, 5) : "Not available";
@@ -120,7 +119,19 @@ export default function Booking() {
 
   return (
     <section className="booking-card">
-      <BookingProgress step={confirmation ? 3 : 2} />
+      <div className="booking-progress" aria-label="Booking progress">
+        <span className="progress-step complete">1. Find a table</span>
+        <span className="progress-line" />
+        <span
+          className={`progress-step ${confirmation ? "complete" : "current"}`}
+        >
+          2. Review booking
+        </span>
+        <span className="progress-line" />
+        <span className={`progress-step ${confirmation ? "current" : ""}`}>
+          3. Confirmed
+        </span>
+      </div>
       <h1 className="mt-3">
         {confirmation ? "Booking confirmed" : "Book a table"}
       </h1>
