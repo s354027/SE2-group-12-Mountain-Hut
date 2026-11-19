@@ -15,6 +15,10 @@ const EMPTY_FORM = {
   status: 'OPEN',
 };
 
+function tableIdsOf(tables) {
+  return (tables || []).map((table) => Number(table.id));
+}
+
 function validate(form) {
   if (!form.date) return 'Date is required.';
   if (!form.startTime) return 'Start time is required.';
@@ -126,7 +130,7 @@ export default function SlotsManager() {
     startTime: String(slot.startTime).slice(0, 5),
     duration: String(slot.duration),
     meal: slot.meal,
-    tableIds: (slot.tables || []).map((table) => Number(table.id)),
+    tableIds: tableIdsOf(slot.tables),
     status: slot.status,
   });
 
@@ -213,8 +217,11 @@ export default function SlotsManager() {
     setCopyError('');
     setMessage('');
 
-    // No slot id to call the copy-tables endpoint on yet; just prefill the
-    // table selection locally from the already-loaded source slot.
+    // There's no slot id to call the copy-tables endpoint on yet (the slot
+    // doesn't exist until this form is submitted), so prefill the table
+    // selection locally from the already-loaded source slot instead. The
+    // user can still adjust it before saving, and the normal create-slot
+    // validation (e.g. duplicate/overlap checks) still runs on submit.
     if (editingId === null) {
       const sourceSlot = slots.find((slot) => slot.id === Number(copySourceId));
       const sourceTables = sourceSlot?.tables || [];
@@ -224,7 +231,7 @@ export default function SlotsManager() {
       }
       setForm((current) => ({
         ...current,
-        tableIds: sourceTables.map((table) => Number(table.id)),
+        tableIds: tableIdsOf(sourceTables),
       }));
       setMessage('Tables copied from the selected slot.');
       return;
@@ -237,7 +244,7 @@ export default function SlotsManager() {
       });
       setForm((current) => ({
         ...current,
-        tableIds: (updatedSlot.tables || []).map((table) => Number(table.id)),
+        tableIds: tableIdsOf(updatedSlot.tables),
       }));
       setMessage('Tables copied from the selected slot.');
       await loadSlots();
