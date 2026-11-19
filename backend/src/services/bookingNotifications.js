@@ -1,5 +1,5 @@
 import { models } from '../db/index.js';
-import { sendBookingConfirmation } from './emailService.js';
+import { sendBookingConfirmation, sendBookingModification } from './emailService.js';
 
 function formatDateForEmail(isoDate) {
   const [year, month, day] = isoDate.split('-');
@@ -19,14 +19,13 @@ function addMinutesToTime(time, minutesToAdd) {
 }
 
 /**
- * Sends the booking confirmation email for an already-saved booking.
- * Meant to be called explicitly by whoever creates the booking (MH-28),
- * once the booking and its assigned tables are both persisted.
+ * Sends an email with the details of an already-saved booking.
+ * Meant to be called after the booking and its assigned tables are persisted.
  *
  * @param {number} bookingId
  * @returns {Promise<boolean>} true if the email was sent, false if it was skipped (e.g. no email on file)
  */
-export async function notifyBookingConfirmed(bookingId) {
+async function notifyBooking(bookingId, sendEmail) {
   const { Booking, User, Slot } = models;
 
   const booking = await Booking.findByPk(bookingId, {
@@ -43,7 +42,7 @@ export async function notifyBookingConfirmed(bookingId) {
   const { hiker, slot } = booking;
 
   if (!hiker?.email) {
-    console.warn(`Booking ${bookingId}: hiker has no email on file, confirmation email skipped`);
+    console.warn(`Booking ${bookingId}: hiker has no email on file, notification email skipped`);
     return false;
   }
 
@@ -60,7 +59,7 @@ export async function notifyBookingConfirmed(bookingId) {
     )
   ];
 
-  return sendBookingConfirmation(
+  return sendEmail(
     hiker.email,
     `${hiker.firstName} ${hiker.lastName}`,
     booking.id,
@@ -70,4 +69,12 @@ export async function notifyBookingConfirmed(bookingId) {
     booking.numberOfPeople,
     requirements.length > 0 ? requirements.join(", ") : null
   );
+}
+
+export function notifyBookingConfirmed(bookingId) {
+  return notifyBooking(bookingId, sendBookingConfirmation);
+}
+
+export function notifyBookingModified(bookingId) {
+  return notifyBooking(bookingId, sendBookingModification);
 }

@@ -1,9 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { Op } from "sequelize";
 
 const {
   findByPkUser,
   findOneUser,
   findByPkSlot,
+  findAllBooking,
   findOne,
   sum,
   create,
@@ -13,6 +15,7 @@ const {
   findByPkUser: vi.fn(),
   findOneUser: vi.fn(),
   findByPkSlot: vi.fn(),
+  findAllBooking: vi.fn(),
   findOne: vi.fn(),
   sum: vi.fn(),
   create: vi.fn(),
@@ -37,7 +40,7 @@ vi.mock("../../src/db/index.js", () => ({
   models: {
     User: { findByPk: findByPkUser, findOne: findOneUser, create: createUser },
     Slot: { findByPk: findByPkSlot },
-    Booking: { findOne, sum, create },
+    Booking: { findOne, findAll: findAllBooking, sum, create },
     BookingTable: { bulkCreate },
   },
 }));
@@ -53,6 +56,7 @@ vi.mock("../../src/services/partySplit.js", () => ({
 import {
   createBookingByStaff,
   createBookingForHiker,
+  getHikerBookings,
   BookingError,
 } from "../../src/services/bookingService.js";
 
@@ -81,6 +85,148 @@ beforeEach(() => {
   transaction.mockImplementation((_options, callback) => callback({}));
 
   findOne.mockResolvedValue(null); //by default: the hiker doesn't have a reservation
+});
+
+describe("getHikerBookings", () => {
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "not-an-id", "0"])(
+    "rejects invalid hiker IDs (%#)",
+    async (id) => {
+      await expectBookingError(
+        getHikerBookings(id),
+        400,
+        "Invalid hiker ID",
+      );
+
+      expect(findAllBooking).not.toHaveBeenCalled();
+    },
+  );
+
+  it("returns all bookings by default without a slot date filter", async () => {
+    findAllBooking.mockResolvedValue([]);
+
+    await expect(getHikerBookings(7)).resolves.toEqual([]);
+
+    const query = findAllBooking.mock.calls[0][0];
+    const slotInclude = query.include.find(include => include.as === "slot");
+
+    expect(slotInclude.where).toBeUndefined();
+    expect(slotInclude.required).toBeUndefined();
+  });
+
+  it("only queries bookings whose slot date is later than today when requested", async () => {
+    const now = new Date();
+    const today = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, "0"),
+      String(now.getDate()).padStart(2, "0"),
+    ].join("-");
+    findAllBooking.mockResolvedValue([]);
+
+    await expect(getHikerBookings(7, { upcomingOnly: true })).resolves.toEqual([]);
+
+    const query = findAllBooking.mock.calls[0][0];
+    const slotInclude = query.include.find(include => include.as === "slot");
+
+    expect(slotInclude.where).toEqual({ date: { [Op.gt]: today } });
+    expect(slotInclude.required).toBe(true);
+  });
+
+  it("maps Sequelize booking values and their associated slot and tables", async () => {
+    findAllBooking.mockResolvedValue([
+      {
+        toJSON: () => ({
+          id: 12,
+          hikerId: 7,
+          slotId: 10,
+          numberOfPeople: 2,
+          status: "CONFIRMED",
+          allergyFlag: true,
+          allergyDescription: "Peanuts",
+          dietaryRequirements: [{ description: "Vegetarian", allergies: false }],
+          slot: {
+            id: 10,
+            date: "2099-11-23",
+            startTime: "12:00:00",
+            duration: 90,
+            meal: "LUNCH",
+            totalCapacity: 20,
+            status: "OPEN",
+            ignoredSlotProperty: true,
+          },
+          tables: [
+            {
+              id: 4,
+              tableNumber: 2,
+              seats: 4,
+              BookingTable: { allocatedSeats: 2 },
+              ignoredTableProperty: true,
+            },
+          ],
+          ignoredBookingProperty: true,
+        }),
+      },
+    ]);
+
+    await expect(getHikerBookings(7)).resolves.toEqual([
+      {
+        id: 12,
+        hikerId: 7,
+        slotId: 10,
+        numberOfPeople: 2,
+        status: "CONFIRMED",
+        allergyFlag: true,
+        allergyDescription: "Peanuts",
+        dietaryRequirements: [{ description: "Vegetarian", allergies: false }],
+        slot: {
+          id: 10,
+          date: "2099-11-23",
+          startTime: "12:00:00",
+          duration: 90,
+          meal: "LUNCH",
+          totalCapacity: 20,
+          status: "OPEN",
+        },
+        tables: [
+          {
+            id: 4,
+            tableNumber: 2,
+            seats: 4,
+            allocatedSeats: 2,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("maps plain booking objects and defaults missing associations and requirements", async () => {
+    findAllBooking.mockResolvedValue([
+      {
+        id: 13,
+        hikerId: 7,
+        slotId: 11,
+        numberOfPeople: 1,
+        status: "CONFIRMED",
+        allergyFlag: false,
+        allergyDescription: null,
+        slot: null,
+      },
+    ]);
+
+    await expect(getHikerBookings(7)).resolves.toEqual([
+      {
+        id: 13,
+        hikerId: 7,
+        slotId: 11,
+        numberOfPeople: 1,
+        status: "CONFIRMED",
+        allergyFlag: false,
+        allergyDescription: null,
+        dietaryRequirements: [],
+        slot: null,
+        tables: [],
+      },
+    ]);
+  });
 });
 
 describe("createBookingForHiker", () => {

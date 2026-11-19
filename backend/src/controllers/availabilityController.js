@@ -5,7 +5,7 @@ function normalizeStartTime(startTime) {
 }
 
 export async function getAvailability(req, res) {
-  const { date, startTime, partySize } = req.query;
+  const { date, startTime, partySize, skipBookingId } = req.query;
 
   if (!date || !startTime) {
     return res.status(400).json({ error: 'date and startTime are required' });
@@ -16,8 +16,24 @@ export async function getAvailability(req, res) {
     return res.status(400).json({ error: 'partySize must be a positive integer' });
   }
 
+  const excludedBookingId = skipBookingId === undefined
+    ? undefined
+    : Number(skipBookingId);
+
+  if (
+    excludedBookingId !== undefined &&
+    (!Number.isSafeInteger(excludedBookingId) || excludedBookingId < 1)
+  ) {
+    return res.status(400).json({ error: 'skipBookingId must be a positive integer' });
+  }
+
   try {
-    const result = await allocateTables(date, normalizeStartTime(startTime), numPartySize);
+    const result = await allocateTables(
+      date,
+      normalizeStartTime(startTime),
+      numPartySize,
+      excludedBookingId,
+    );
     return res.status(200).json(result);
   } catch (err) {
     console.error(err);

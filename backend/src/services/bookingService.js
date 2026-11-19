@@ -571,7 +571,8 @@ export async function modifyBookingForHiker({
     allergyDescription,
     dietaryRequirements
 }) {
-    const { Booking, BookingTable, DiningTable } = models;
+    const { Booking, BookingTable, DiningTable, Slot } = models;
+    const normalizedHikerId = Number(hikerId);
 
     if (!Number.isSafeInteger(bookingId) || bookingId < 1) {
         throw new BookingError(400, 'Invalid booking ID');
@@ -590,7 +591,7 @@ export async function modifyBookingForHiker({
         }
 
         // 2. A hiker can modify only their own booking
-        if (booking.hikerId !== hikerId) {
+        if (booking.hikerId !== normalizedHikerId) {
             throw new BookingError(403, 'Cannot modify another hiker booking');
         }
 
@@ -618,6 +619,19 @@ export async function modifyBookingForHiker({
             dietaryRequirements: finalDietaryRequirements
         });
 
+        // The 48-hour rule is measured from the slot of the
+        // reservation that is being modified (the source slot).
+        const currentSlot = await Slot.findByPk(booking.slotId, { transaction });
+        if (!currentSlot) {
+            throw new BookingError(404, 'Slot not found');
+        }
+        const currentSlotStart = getSlotStart(currentSlot);
+        const fortyEightHoursMs = 48 * 60 * 60 * 1000;
+
+        if (Number.isNaN(currentSlotStart.getTime()) || currentSlotStart.getTime() - Date.now() < fortyEightHoursMs) {
+            throw new BookingError(409, 'Booking deadline has passed');
+        }
+
         const allocationChanged = finalSlotId !== booking.slotId || finalNumberOfPeople !== booking.numberOfPeople;
 
         /*
@@ -625,18 +639,13 @@ export async function modifyBookingForHiker({
          * table allocation.
          */
         if (allocationChanged) {
-            // 4. Verify the target slot
-            const slot = await findOpenSlot(
-                finalSlotId,
-                transaction
-            );
-
-            // Moving/changing the reservation must still
-            // respect the hiker booking deadline.
-            const slotStart = getSlotStart(slot);
+            // Moving to another slot must also respect the
+            // 2-hour creation deadline of the target slot.
+            const targetSlot = await findOpenSlot(finalSlotId, transaction);
+            const targetSlotStart = getSlotStart(targetSlot);
             const twoHoursMs = 2 * 60 * 60 * 1000;
 
-            if (Number.isNaN(slotStart.getTime()) || slotStart.getTime() - Date.now() < twoHoursMs) {
+            if (Number.isNaN(targetSlotStart.getTime()) || targetSlotStart.getTime() - Date.now() < twoHoursMs) {
                 throw new BookingError(409, 'Booking deadline has passed');
             }
 
@@ -679,7 +688,7 @@ export async function modifyBookingForHiker({
             );
 
             const remainingCapacity =
-                slot.totalCapacity -
+                targetSlot.totalCapacity -
                 (bookedSeats ?? 0);
 
             if (
@@ -761,6 +770,11 @@ export async function modifyBookingForHiker({
                 {
                     include: [
                         {
+                            model: Slot,
+                            as: 'slot',
+                            attributes: ['id', 'date', 'startTime', 'duration', 'meal', 'totalCapacity', 'status']
+                        },
+                        {
                             model: DiningTable,
                             as: 'tables',
                             through: {
@@ -781,6 +795,7 @@ export async function modifyBookingForHiker({
             allergyFlag: updatedBooking.allergyFlag,
             allergyDescription: updatedBooking.allergyDescription,
             dietaryRequirements: updatedBooking.dietaryRequirements,
+            slot: updatedBooking.slot,
 
             tables: updatedBooking.tables.map(
                 table => ({
@@ -789,6 +804,90 @@ export async function modifyBookingForHiker({
                     allocatedSeats: table.BookingTable.allocatedSeats
                 })
             )
+        };
+    });
+}
+
+export async function getHikerBookings(id, { upcomingOnly = false } = {}) {
+    const hikerId = Number(id);
+
+    if (!Number.isSafeInteger(hikerId) || hikerId < 1) {
+        throw new BookingError(400, 'Invalid hiker ID');
+    }
+
+    const { Booking, Slot, DiningTable } = models;
+    const slotInclude = {
+        model: Slot,
+        as: 'slot',
+        attributes: ['id', 'date', 'startTime', 'duration', 'meal', 'totalCapacity', 'status']
+    };
+
+    if (upcomingOnly) {
+        const now = new Date();
+        const today = [
+            now.getFullYear(),
+            String(now.getMonth() + 1).padStart(2, '0'),
+            String(now.getDate()).padStart(2, '0')
+        ].join('-');
+
+        slotInclude.where = {
+            date: {
+                [Op.gt]: today
+            }
+        };
+        slotInclude.required = true;
+    }
+
+    const bookings = await Booking.findAll({
+        where: { hikerId },
+        include: [
+            slotInclude,
+            {
+                model: DiningTable,
+                as: 'tables',
+                attributes: ['id', 'tableNumber', 'seats'],
+                through: {
+                    attributes: ['allocatedSeats']
+                }
+            }
+        ],
+        order: [
+            [{ model: Slot, as: 'slot' }, 'date', 'ASC'],
+            [{ model: Slot, as: 'slot' }, 'startTime', 'ASC']
+        ]
+    });
+
+    return bookings.map(booking => {
+        const value = typeof booking.toJSON === 'function'
+            ? booking.toJSON()
+            : { ...booking };
+
+        return {
+            id: value.id,
+            hikerId: value.hikerId,
+            slotId: value.slotId,
+            numberOfPeople: value.numberOfPeople,
+            status: value.status,
+            allergyFlag: value.allergyFlag,
+            allergyDescription: value.allergyDescription,
+            dietaryRequirements: value.dietaryRequirements ?? [],
+            slot: value.slot
+                ? {
+                    id: value.slot.id,
+                    date: value.slot.date,
+                    startTime: value.slot.startTime,
+                    duration: value.slot.duration,
+                    meal: value.slot.meal,
+                    totalCapacity: value.slot.totalCapacity,
+                    status: value.slot.status
+                }
+                : null,
+            tables: (value.tables ?? []).map(table => ({
+                id: table.id,
+                tableNumber: table.tableNumber,
+                seats: table.seats,
+                allocatedSeats: table.BookingTable?.allocatedSeats
+            }))
         };
     });
 }

@@ -89,7 +89,7 @@ test("booking shows the full service slot duration for a time inside the slot", 
   await expect(page).toHaveURL("/booking");
 
   // Regression: the real slot is 12:00-14:00, not 12:00-13:00.
-  const serviceSlot = page.getByText("Service slot", { exact: true }).locator("..").locator("dd");
+  const serviceSlot = page.getByText("Slot", { exact: true }).locator("..").locator("dd");
 
   await expect(serviceSlot).toHaveText(/12:00\s*-\s*14:00/);
 });

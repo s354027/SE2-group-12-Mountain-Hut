@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { notifyBookingConfirmed } from "../../src/services/bookingNotifications.js";
+import { notifyBookingConfirmed, notifyBookingModified } from "../../src/services/bookingNotifications.js";
 
-const { findByPk, sendBookingConfirmation } = vi.hoisted(() => ({
+const { findByPk, sendBookingConfirmation, sendBookingModification } = vi.hoisted(() => ({
   findByPk: vi.fn(),
   sendBookingConfirmation: vi.fn(),
+  sendBookingModification: vi.fn(),
 }));
 
 vi.mock("../../src/db/index.js", () => ({
@@ -14,12 +15,14 @@ vi.mock("../../src/db/index.js", () => ({
 
 vi.mock("../../src/services/emailService.js", () => ({
   sendBookingConfirmation,
+  sendBookingModification,
 }));
 
 describe("sendBookingNotification", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sendBookingConfirmation.mockResolvedValue(true);
+    sendBookingModification.mockResolvedValue(true);
   });
 
   it("throws when the booking is not found", async () => {
@@ -138,5 +141,31 @@ describe("sendBookingNotification", () => {
       2,
       "Peanuts (allergy), 2 vegetarians",
     );
+  });
+
+  it("sends modified bookings through the update email", async () => {
+    const bookingId = 1;
+    findByPk.mockResolvedValueOnce({
+      id: bookingId,
+      hiker: { email: "test@test.local", firstName: "John", lastName: "Doe" },
+      slot: { date: "2024-06-01", startTime: "10:00:00", duration: 60 },
+      numberOfPeople: 3,
+      allergyFlag: false,
+      allergyDescription: null,
+      dietaryRequirements: [],
+    });
+
+    await expect(notifyBookingModified(bookingId)).resolves.toBe(true);
+    expect(sendBookingModification).toHaveBeenCalledWith(
+      "test@test.local",
+      "John Doe",
+      bookingId,
+      "01/06/2024",
+      "10:00",
+      "11:00",
+      3,
+      null,
+    );
+    expect(sendBookingConfirmation).not.toHaveBeenCalled();
   });
 });

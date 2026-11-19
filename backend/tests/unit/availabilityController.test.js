@@ -85,9 +85,56 @@ describe("getAvailability", () => {
       "2026-10-30",
       "19:00:00",
       4,
+      undefined,
     );
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(result);
+  });
+
+  it("passes skipBookingId to table allocation", async () => {
+    allocateTables.mockResolvedValue({ available: true });
+    const res = createResponse();
+
+    await getAvailability(
+      {
+        query: {
+          date: "2026-10-30",
+          startTime: "19:00",
+          partySize: "4",
+          skipBookingId: "12",
+        },
+      },
+      res,
+    );
+
+    expect(allocateTables).toHaveBeenCalledWith(
+      "2026-10-30",
+      "19:00:00",
+      4,
+      12,
+    );
+  });
+
+  it("rejects an invalid skipBookingId", async () => {
+    const res = createResponse();
+
+    await getAvailability(
+      {
+        query: {
+          date: "2026-10-30",
+          startTime: "19:00",
+          partySize: "4",
+          skipBookingId: "0",
+        },
+      },
+      res,
+    );
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "skipBookingId must be a positive integer",
+    });
+    expect(allocateTables).not.toHaveBeenCalled();
   });
 
   it("preserves an already complete HH:MM:SS time", async () => {
@@ -109,6 +156,7 @@ describe("getAvailability", () => {
       "2026-10-30",
       "19:00:00",
       4,
+      undefined,
     );
   });
 

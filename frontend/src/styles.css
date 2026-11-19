@@ -155,10 +155,240 @@ body {
   font-size: 2rem;
   letter-spacing: -0.02em;
 }
-.booking-intro {
+.booking-intro, .hiker-bookings-intro {
   margin: 0 0 28px;
   color: #66736d;
   line-height: 1.6;
+}
+.hiker-bookings-list {
+  display: grid;
+  gap: 16px;
+}
+.hiker-bookings-loading {
+  min-height: 40vh;
+}
+.hiker-booking-card {
+  padding: 20px;
+  border: 1px solid #dfe6e1;
+  border-radius: 12px;
+  background: #fff;
+}
+.hiker-booking-card-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+.hiker-booking-card-heading h2 {
+  margin: 0;
+  color: var(--alpine-deep);
+  font-size: 1.25rem;
+}
+.hiker-booking-card-heading p {
+  margin: 6px 0 0;
+  color: #66736d;
+}
+.hiker-booking-status {
+  color: #53675b;
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+.hiker-booking-card .booking-modify-button {
+  display: block;
+  margin-left: auto;
+  color: #fff;
+  background-color: var(--alpine-forest);
+  border-color: var(--alpine-forest);
+}
+.hiker-booking-card .booking-modify-button:hover {
+  color: #fff;
+  background-color: var(--alpine-deep);
+  border-color: var(--alpine-deep);
+}
+.hiker-booking-details {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0;
+}
+.hiker-booking-details div {
+  display: grid;
+  grid-template-columns: minmax(130px, 0.35fr) 1fr;
+  gap: 12px;
+}
+.hiker-booking-details dt {
+  color: #66736d;
+  font-weight: 600;
+}
+.hiker-booking-details dd {
+  margin: 0;
+}
+.hiker-booking-edit {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+.hiker-booking-edit > label:not(.checkbox-label) {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+}
+.booking-edit-modal .modal-dialog {
+  max-width: 560px;
+  margin: 1.25rem auto;
+  padding: 0 12px;
+}
+.booking-edit-modal .modal-content {
+  min-height: 480px;
+  overflow: hidden;
+  border: 1px solid #d9e2da;
+  border-radius: 16px;
+  box-shadow: 0 24px 70px rgba(20, 45, 32, 0.24);
+}
+.booking-edit-modal .modal-header {
+  padding: 20px 24px;
+}
+.booking-edit-modal .modal-content > form {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+}
+.booking-edit-summary {
+  padding: 12px 24px;
+  color: #52615b;
+  font-size: 0.9rem;
+  text-align: center;
+}
+.booking-updated-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  color: #285943;
+  background: #e8f2eb;
+  font-size: 0.72rem;
+  font-weight: 700;
+  vertical-align: 1px;
+}
+.booking-edit-fields {
+  display: grid;
+  flex: 1;
+  gap: 16px;
+}
+.booking-edit-fields .form-label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+}
+.booking-edit-requirements .requirements-heading h3 {
+  margin: 0;
+  color: var(--alpine-deep);
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.booking-edit-requirements .requirements-heading p {
+  margin: 6px 0 0;
+  color: #52615b;
+}
+.booking-edit-requirements .party-requirements {
+  margin-top: 8px;
+}
+.booking-edit-modal .booking-edit-add-requirement {
+  padding: 8px 14px;
+  border: 1px solid var(--alpine-forest);
+  border-radius: 8px;
+  color: #fff;
+  background: var(--alpine-forest);
+  font-weight: 600;
+  transition:
+    background-color 0.15s ease,
+    border-color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+.booking-edit-modal .booking-edit-add-requirement:hover:not(:disabled) {
+  color: #fff;
+  background: var(--alpine-deep);
+  border-color: var(--alpine-deep);
+}
+.booking-edit-modal .booking-edit-add-requirement:focus:not(:disabled),
+.booking-edit-modal .booking-edit-add-requirement:active:not(:disabled) {
+  color: var(--alpine-deep);
+  background: #e6efe5;
+  border-color: #b7c8ba;
+  box-shadow: 0 0 0 0.2rem rgba(36, 76, 61, 0.18);
+}
+.booking-edit-modal .booking-edit-add-requirement:disabled {
+  color: var(--alpine-muted);
+  background: #e6efe5;
+  border-color: #cbdcc9;
+  opacity: 1;
+  cursor: not-allowed;
+}
+.booking-edit-add-form-actions .btn-outline-secondary {
+  padding: 8px 14px;
+  border-color: #b7c8ba;
+  border-radius: 8px;
+  color: var(--alpine-forest);
+  background: #f8faf7;
+  font-weight: 600;
+}
+.booking-edit-add-form-actions .btn-outline-secondary:hover {
+  color: var(--alpine-deep);
+  border-color: var(--alpine-forest);
+  background: #e6efe5;
+}
+.booking-edit-add-form {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--alpine-line);
+  border-radius: 10px;
+  background: #f8faf7;
+}
+.booking-edit-add-form .form-label {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  font-weight: 600;
+}
+.booking-edit-add-form textarea {
+  resize: vertical;
+}
+.booking-edit-add-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.booking-edit-step-two-footer {
+  justify-content: space-between;
+}
+.booking-edit-modal .modal-footer .btn {
+  min-width: 120px;
+}
+.booking-edit-modal .modal-footer .btn-primary {
+  color: #fff;
+  background-color: var(--alpine-forest);
+  border-color: var(--alpine-forest);
+}
+.booking-edit-modal .modal-footer .btn-primary:hover:not(:disabled) {
+  color: #fff;
+  background-color: var(--alpine-deep);
+  border-color: var(--alpine-deep);
+}
+.booking-edit-modal .modal-footer .btn-primary:focus:not(:disabled),
+.booking-edit-modal .modal-footer .btn-primary:active:not(:disabled) {
+  color: var(--alpine-deep);
+  background-color: #e6efe5;
+  border-color: #cbdcc9;
+  box-shadow: 0 0 0 0.2rem rgba(36, 76, 61, 0.18);
+}
+.booking-edit-modal .modal-footer .btn-primary:disabled {
+  color: var(--alpine-muted);
+  background-color: #e6efe5;
+  border-color: #cbdcc9;
+  opacity: 1;
+  box-shadow: none;
 }
 .eyebrow {
   display: block;
@@ -259,22 +489,18 @@ body {
   padding: 9px 0;
 }
 .booking-summary dt {
-  color: #788477;
-  font-size: 0.75rem;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  color: #66736d;
+  font-size: 1rem;
+  font-weight: 600;
 }
 .booking-summary dd {
   margin: 0;
-  font-size: 0.95rem;
-  font-weight: 600;
 }
-.booking-summary > div:nth-child(2) dd,
+/*.booking-summary > div:nth-child(2) dd,
 .booking-summary > div:nth-child(3) dd,
 .booking-summary > div:nth-child(4) dd {
   font-size: 0.95rem;
-}
+}*/
 .booking-summary > div:last-child dd {
   display: flex;
   gap: 16px;
@@ -285,8 +511,8 @@ body {
   flex: 0 0 auto;
   display: inline-flex;
   gap: 4px;
-  font-size: 0.95rem;
-  font-weight: 600;
+  /*font-size: 0.95rem;*/
+  font-weight: 400;
 }
 .table-allocation strong {
   font-weight: inherit;
@@ -452,7 +678,7 @@ body {
   flex-wrap: wrap;
 }
 .requirement-description {
-  font-weight: 600;
+  font-weight: 400;
 }
 .party-requirement-actions {
   flex: 0 0 auto;
@@ -557,6 +783,13 @@ body {
   }
   .booking-actions {
     flex-direction: column-reverse;
+  }
+  .hiker-bookings {
+    margin: 24px auto;
+    padding: 24px;
+  }
+  .hiker-bookings h1 {
+    font-size: 1.65rem;
   }
 }
 
@@ -1436,11 +1669,11 @@ button:active:not(:disabled) {
 .form-success {
   border-radius: 10px;
 }
-.booking-card {
+.booking-card, .hiker-bookings {
   max-width: 780px;
   padding: clamp(18px, 3vw, 32px);
 }
-.booking-card h1 {
+.booking-card h1, .hiker-bookings h1 {
   font-family: Georgia, serif;
   font-weight: 500;
   color: var(--alpine-deep);
@@ -1458,6 +1691,7 @@ button:active:not(:disabled) {
   flex: 0 0 auto;
   width: auto;
 }
+
 .booking-summary,
 .availability-result,
 .table-allocation {

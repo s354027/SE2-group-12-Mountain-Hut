@@ -129,6 +129,30 @@ describe("allocateTables", () => {
       summary: "Available seat in the slot of the 19:00 (4 + 2 seats)",
     });
     expect(splitParty).toHaveBeenCalledWith(6, tables);
+    expect(findFreeTables).toHaveBeenCalledWith(10, {
+      excludeBookingId: undefined,
+    });
+  });
+
+  it("excludes the current booking while checking the requested slot", async () => {
+    const tables = [{ id: 1, tableNumber: 4, seats: 4 }];
+    findAll.mockResolvedValue([
+      {
+        id: 10,
+        date: "2026-10-30",
+        startTime: "19:00:00",
+        duration: 120,
+        meal: "DINNER",
+      },
+    ]);
+    findFreeTables.mockResolvedValue(tables);
+    splitParty.mockReturnValue([{ ...tables[0], allocatedSeats: 2 }]);
+
+    await allocateTables("2026-10-30", "19:00:00", 2, 12);
+
+    expect(findFreeTables).toHaveBeenCalledWith(10, {
+      excludeBookingId: 12,
+    });
   });
 
   it("returns unavailable when the party cannot be allocated", async () => {
