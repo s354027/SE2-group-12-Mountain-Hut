@@ -21,7 +21,7 @@ function timeToMinutes(timeStr) {
  * @returns {Promise<Object>} Structured result with availability and detail of places
  * Verify that the time falls within a slot and is at least 20 minutes from its end.
  */
-export async function allocateTables(date, startTime, partySize) {
+export async function allocateTables(date, startTime, partySize, skipBookingId) {
   const { Slot } = models;
   const numPartySize = Number(partySize);
   const reqMinutes = timeToMinutes(startTime);
@@ -77,7 +77,9 @@ export async function allocateTables(date, startTime, partySize) {
   }
 
   // 4. Check the actual availability of tables
-  const freeTables = await findFreeTables(currentSlot.id);
+  const freeTables = await findFreeTables(currentSlot.id, {
+    excludeBookingId: skipBookingId
+  });
   if (!freeTables || freeTables.length === 0) {
     return {
       available: false,
