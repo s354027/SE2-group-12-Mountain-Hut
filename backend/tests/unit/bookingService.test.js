@@ -88,6 +88,19 @@ beforeEach(() => {
 });
 
 describe("getHikerBookings", () => {
+  it.each([0, -1, 1.5, Number.MAX_SAFE_INTEGER + 1, "not-an-id", "0"])(
+    "rejects invalid hiker IDs (%#)",
+    async (id) => {
+      await expectBookingError(
+        getHikerBookings(id),
+        400,
+        "Invalid hiker ID",
+      );
+
+      expect(findAllBooking).not.toHaveBeenCalled();
+    },
+  );
+
   it("returns all bookings by default without a slot date filter", async () => {
     findAllBooking.mockResolvedValue([]);
 
@@ -116,6 +129,103 @@ describe("getHikerBookings", () => {
 
     expect(slotInclude.where).toEqual({ date: { [Op.gt]: today } });
     expect(slotInclude.required).toBe(true);
+  });
+
+  it("maps Sequelize booking values and their associated slot and tables", async () => {
+    findAllBooking.mockResolvedValue([
+      {
+        toJSON: () => ({
+          id: 12,
+          hikerId: 7,
+          slotId: 10,
+          numberOfPeople: 2,
+          status: "CONFIRMED",
+          allergyFlag: true,
+          allergyDescription: "Peanuts",
+          dietaryRequirements: [{ description: "Vegetarian", allergies: false }],
+          slot: {
+            id: 10,
+            date: "2099-11-23",
+            startTime: "12:00:00",
+            duration: 90,
+            meal: "LUNCH",
+            totalCapacity: 20,
+            status: "OPEN",
+            ignoredSlotProperty: true,
+          },
+          tables: [
+            {
+              id: 4,
+              tableNumber: 2,
+              seats: 4,
+              BookingTable: { allocatedSeats: 2 },
+              ignoredTableProperty: true,
+            },
+          ],
+          ignoredBookingProperty: true,
+        }),
+      },
+    ]);
+
+    await expect(getHikerBookings(7)).resolves.toEqual([
+      {
+        id: 12,
+        hikerId: 7,
+        slotId: 10,
+        numberOfPeople: 2,
+        status: "CONFIRMED",
+        allergyFlag: true,
+        allergyDescription: "Peanuts",
+        dietaryRequirements: [{ description: "Vegetarian", allergies: false }],
+        slot: {
+          id: 10,
+          date: "2099-11-23",
+          startTime: "12:00:00",
+          duration: 90,
+          meal: "LUNCH",
+          totalCapacity: 20,
+          status: "OPEN",
+        },
+        tables: [
+          {
+            id: 4,
+            tableNumber: 2,
+            seats: 4,
+            allocatedSeats: 2,
+          },
+        ],
+      },
+    ]);
+  });
+
+  it("maps plain booking objects and defaults missing associations and requirements", async () => {
+    findAllBooking.mockResolvedValue([
+      {
+        id: 13,
+        hikerId: 7,
+        slotId: 11,
+        numberOfPeople: 1,
+        status: "CONFIRMED",
+        allergyFlag: false,
+        allergyDescription: null,
+        slot: null,
+      },
+    ]);
+
+    await expect(getHikerBookings(7)).resolves.toEqual([
+      {
+        id: 13,
+        hikerId: 7,
+        slotId: 11,
+        numberOfPeople: 1,
+        status: "CONFIRMED",
+        allergyFlag: false,
+        allergyDescription: null,
+        dietaryRequirements: [],
+        slot: null,
+        tables: [],
+      },
+    ]);
   });
 });
 
