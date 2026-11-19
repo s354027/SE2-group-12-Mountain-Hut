@@ -770,6 +770,11 @@ export async function modifyBookingForHiker({
                 {
                     include: [
                         {
+                            model: Slot,
+                            as: 'slot',
+                            attributes: ['id', 'date', 'startTime', 'duration', 'meal', 'totalCapacity', 'status']
+                        },
+                        {
                             model: DiningTable,
                             as: 'tables',
                             through: {
@@ -790,6 +795,7 @@ export async function modifyBookingForHiker({
             allergyFlag: updatedBooking.allergyFlag,
             allergyDescription: updatedBooking.allergyDescription,
             dietaryRequirements: updatedBooking.dietaryRequirements,
+            slot: updatedBooking.slot,
 
             tables: updatedBooking.tables.map(
                 table => ({
