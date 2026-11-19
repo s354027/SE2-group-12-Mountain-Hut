@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import BookingProgress from "../components/BookingProgress.jsx";
 
 function todayLocal() {
   const now = new Date();
@@ -91,13 +92,7 @@ export default function Search() {
 
   return (
     <div className="field-guide-search">
-      <div className="booking-progress" aria-label="Booking process">
-        <span className="progress-step current">1. Find a table</span>
-        <span className="progress-line" />
-        <span className="progress-step">2. Review booking</span>
-        <span className="progress-line" />
-        <span className="progress-step">3. Confirmed</span>
-      </div>
+      <BookingProgress step={1} />
 
       <section className="field-guide-hero">
         <div className="field-guide-hero-copy">
