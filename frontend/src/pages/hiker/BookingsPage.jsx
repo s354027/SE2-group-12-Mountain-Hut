@@ -29,7 +29,7 @@ export default function BookingsPage() {
       }
     }
 
-    if (user?.id) getBookings();
+    if (user?.id) void getBookings();
     return () => {
       active = false;
     };
