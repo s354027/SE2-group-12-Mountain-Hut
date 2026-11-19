@@ -4,6 +4,7 @@ import { requireRole } from "../middleware/requireRole.js";
 import { createHikerController } from "../controllers/hikerController.js";
 import { requirePasswordChanged } from "../middleware/requirePasswordChanged.js";
 import { requireAuthorizedHiker } from "../middleware/requireAuthorizedHiker.js";
+import { cancelBooking } from "../controllers/bookingController.js";
 
 export function createHikerRouter({ User, sequelize }) {
   const router = Router();
@@ -23,6 +24,19 @@ export function createHikerRouter({ User, sequelize }) {
     requirePasswordChanged,
     requireAuthorizedHiker,
     getHikerBookings,
+  );
+
+  /**
+   * PATCH /api/hikers/:id/bookings/:bookingId/cancel
+   * Cancel one of the authenticated hiker's active bookings.
+   */
+  router.patch(
+    "/:id/bookings/:bookingId/cancel",
+    requireAuth,
+    requireRole("HIKER"),
+    requirePasswordChanged,
+    requireAuthorizedHiker,
+    cancelBooking,
   );
 
   return router;

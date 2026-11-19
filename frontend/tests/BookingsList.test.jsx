@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import BookingsList from "../src/components/BookingsList.jsx";
 import { api } from "../src/api/client.js";
@@ -142,7 +148,10 @@ describe("BookingsList booking edit modal", () => {
     });
 
     render(
-      <BookingsList bookings={[booking]} onBookingUpdated={onBookingUpdated} />,
+      <BookingsList
+        bookings={[booking]}
+        onBookingUpdated={onBookingUpdated}
+      />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Modify booking" }));
     fireEvent.change(screen.getByLabelText("Date"), {
@@ -186,6 +195,71 @@ describe("BookingsList booking edit modal", () => {
     );
     await waitFor(() =>
       expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+  });
+
+  it("cancels an active booking after confirmation", async () => {
+    const onBookingUpdated = vi.fn();
+    const cancelledBooking = { ...booking, status: "CANCELLED" };
+    api.patch.mockResolvedValue(cancelledBooking);
+
+    const { rerender } = render(
+      <BookingsList
+        bookings={[booking]}
+        hikerId={7}
+        onBookingUpdated={onBookingUpdated}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel booking" }));
+    const dialog = screen.getByRole("dialog", { name: "Cancel booking?" });
+    expect(api.patch).not.toHaveBeenCalled();
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Confirm cancellation" }),
+    );
+
+    await waitFor(() =>
+      expect(api.patch).toHaveBeenCalledWith("/hikers/7/bookings/12/cancel"),
+    );
+    expect(onBookingUpdated).toHaveBeenCalledWith(cancelledBooking);
+    rerender(
+      <BookingsList
+        bookings={[cancelledBooking]}
+        hikerId={7}
+        onBookingUpdated={onBookingUpdated}
+      />,
+    );
+    expect(screen.getByText("CANCELLED")).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Modify booking" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Cancel booking" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows cancellation errors and lets the user retry", async () => {
+    api.patch.mockRejectedValueOnce(new Error("Booking is not active"));
+
+    render(
+      <BookingsList
+        bookings={[booking]}
+        hikerId={7}
+        onBookingUpdated={vi.fn()}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cancel booking" }));
+    const dialog = screen.getByRole("dialog", { name: "Cancel booking?" });
+    fireEvent.click(
+      within(dialog).getByRole("button", { name: "Confirm cancellation" }),
+    );
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "Booking is not active",
+    );
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Cancel booking" }),
+      ).toBeEnabled(),
     );
   });
 });

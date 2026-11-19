@@ -42,10 +42,14 @@ function normalizeTime(value) {
     : "";
 }
 
-function formatErrorMessage(message) {
-  return String(message ?? "Unable to update the booking")
+function formatErrorMessage(
+  message,
+  fallback = "Unable to update the booking",
+) {
+  return String(message ?? fallback)
     .replace(/\bHiker already has a booking\b/gi, "You already have a booking")
     .replace(/\bCannot modify another hiker booking\b/gi, "You cannot modify this booking")
+    .replace(/\bCannot cancel another hiker booking\b/gi, "You cannot cancel this booking")
     .replace(/\bHiker\b/g, "You")
     .replace(/\bhiker\b/g, "you");
 }
@@ -471,12 +475,126 @@ function BookingEditModal({ booking, onClose, onBookingUpdated }) {
   );
 }
 
-function BookingCard({ booking, onBookingUpdated }) {
-  const [editing, setEditing] = useState(false);
-  const canEdit = !slotStartsWithinEditWindow(booking.slot);
+function BookingCancelModal({
+  booking,
+  onClose,
+  onConfirm,
+  canceling,
+  error,
+}) {
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === "Escape" && !canceling) onClose();
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [canceling, onClose]);
 
   return (
-    <article className="hiker-booking-card">
+    <>
+      <div className="modal-backdrop fade show" />
+      <div
+        className="modal fade show d-block booking-cancel-modal"
+        tabIndex="-1"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={`booking-cancel-title-${booking.id}`}
+      >
+        <div className="modal-dialog modal-dialog-centered">
+          <div className="modal-content">
+            <div className="modal-header">
+              <h2
+                className="modal-title fs-5"
+                id={`booking-cancel-title-${booking.id}`}
+              >
+                Cancel booking?
+              </h2>
+              <button
+                type="button"
+                className="btn-close"
+                aria-label="Close"
+                onClick={onClose}
+                disabled={canceling}
+              />
+            </div>
+            <div className="modal-body">
+              <p>
+                Are you sure you want to cancel this booking? This action cannot
+                be undone.
+              </p>
+              {error && (
+                <p className="form-error mb-0" role="alert">
+                  {error}
+                </p>
+              )}
+            </div>
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-outline-secondary py-2 px-0"
+                onClick={onClose}
+                disabled={canceling}
+              >
+                Keep booking
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger py-2"
+                onClick={onConfirm}
+                disabled={canceling}
+              >
+                {canceling ? "Cancelling..." : "Confirm cancellation"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function BookingCard({ booking, hikerId, onBookingUpdated }) {
+  const [editing, setEditing] = useState(false);
+  const [confirmingCancellation, setConfirmingCancellation] = useState(false);
+  const [canceling, setCanceling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const isActive = ["PENDING", "CONFIRMED"].includes(booking.status);
+  const canEdit = isActive && !slotStartsWithinEditWindow(booking.slot);
+  const canCancel = isActive;
+
+  function closeCancelModal() {
+    if (canceling) return;
+    setCancelError("");
+    setConfirmingCancellation(false);
+  }
+
+  async function cancelBooking() {
+    setCancelError("");
+    setCanceling(true);
+    try {
+      const cancelledBooking = await api.patch(
+        `/hikers/${hikerId}/bookings/${booking.id}/cancel`,
+      );
+      onBookingUpdated(cancelledBooking);
+      setConfirmingCancellation(false);
+    } catch (requestError) {
+      setCancelError(
+        formatErrorMessage(
+          requestError.message,
+          "Unable to cancel the booking",
+        ),
+      );
+    } finally {
+      setCanceling(false);
+    }
+  }
+
+  return (
+    <article
+      className="hiker-booking-card"
+      data-status={booking.status}
+    >
       <div className="hiker-booking-card-heading">
         <div>
           <h2>{booking.slot?.meal || "Mountain hut booking"}</h2>
@@ -485,7 +603,12 @@ function BookingCard({ booking, onBookingUpdated }) {
             {formatTime(booking.slot?.startTime)}
           </p>
         </div>
-        <span className="hiker-booking-status">{booking.status}</span>
+        <span
+          className="hiker-booking-status"
+          data-status={booking.status}
+        >
+          {booking.status}
+        </span>
       </div>
 
       <dl className="hiker-booking-details">
@@ -521,16 +644,44 @@ function BookingCard({ booking, onBookingUpdated }) {
           </div>
         )}
       </dl>
+      {!editing && (canEdit || canCancel) && (
+        <div className="hiker-booking-actions">
+          {canEdit && (
+            <button
+              type="button"
+              className="btn booking-modify-button"
+              onClick={() => setEditing(true)}
+            >
+              <i className="bi bi-pencil me-2" aria-hidden="true" />
+              Modify booking
+            </button>
+          )}
 
-      {canEdit && !editing && (
-        <button
-          type="button"
-          className="btn booking-modify-button"
-          onClick={() => setEditing(true)}
-        >
-          <i className="bi bi-pencil me-2" aria-hidden="true" />
-          Modify booking
-        </button>
+          {canCancel && (
+            <button
+              type="button"
+              className="btn booking-cancel-button"
+              onClick={() => {
+                setCancelError("");
+                setConfirmingCancellation(true);
+              }}
+              disabled={canceling}
+            >
+              <i className="bi bi-x-circle me-2" aria-hidden="true" />
+              {canceling ? "Cancelling..." : "Cancel booking"}
+            </button>
+          )}
+        </div>
+      )}
+
+      {confirmingCancellation && (
+        <BookingCancelModal
+          booking={booking}
+          onClose={closeCancelModal}
+          onConfirm={cancelBooking}
+          canceling={canceling}
+          error={cancelError}
+        />
       )}
 
       {editing && (
@@ -544,7 +695,7 @@ function BookingCard({ booking, onBookingUpdated }) {
   );
 }
 
-export default function BookingsList({ bookings, onBookingUpdated }) {
+export default function BookingsList({ bookings, hikerId, onBookingUpdated }) {
   if (bookings.length === 0) {
     return <p>You have no upcoming bookings.</p>;
   }
@@ -555,6 +706,7 @@ export default function BookingsList({ bookings, onBookingUpdated }) {
         <BookingCard
           key={booking.id}
           booking={booking}
+          hikerId={hikerId}
           onBookingUpdated={onBookingUpdated}
         />
       ))}
