@@ -8,6 +8,7 @@ import StaffRegister from "./pages/StaffRegister.jsx";
 import Search from "./pages/Search.jsx";
 import Booking from "./pages/Booking.jsx";
 import StaffSlots from "./pages/StaffSlots.jsx";
+import StaffBooking from "./pages/StaffBooking.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import BookingsPage from "./pages/hiker/BookingsPage.jsx";
 
@@ -31,6 +32,7 @@ export default function App() {
         {/* hut staff only */}
         <Route element={<ProtectedRoute roles={["EMPLOYEE", "WARDEN"]} />}>
           <Route path="/staff/slots" element={<StaffSlots />} />
+          <Route path="/staff/bookings/new" element={<StaffBooking />} />
         </Route>
 
         {/* warden only */}

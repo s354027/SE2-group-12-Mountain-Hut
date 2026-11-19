@@ -19,6 +19,7 @@ export default function Layout() {
           <NavLink to="/search">Availability</NavLink>
           {isHiker && <NavLink to="/bookings">Bookings</NavLink>}
           {isStaff && <NavLink to="/staff/slots">Manage slots</NavLink>}
+          {isStaff && <NavLink to="/staff/bookings/new">Staff booking</NavLink>}
           {isWarden && <NavLink to="/admin/staff/new">New staff</NavLink>}
         </nav>
         <div className="nav-actions">

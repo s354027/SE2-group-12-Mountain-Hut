@@ -2758,3 +2758,93 @@ button:active:not(:disabled) {
 .table-error-alert span:first-child {
   font-size: 20px;
 }
+
+.hiker-identity-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #d9ded8;
+}
+.hiker-identity-tab {
+  padding: 10px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: #66736d;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.hiker-identity-tab:hover {
+  color: #285943;
+}
+.hiker-identity-tab.active {
+  color: #1f4d3a;
+  border-bottom-color: #1f4d3a;
+}
+.hiker-identity-hint {
+  margin: 0 0 16px;
+  color: #66736d;
+  font-size: 0.85rem;
+}
+.hiker-search-status {
+  margin: 0 0 16px;
+  color: #66736d;
+  font-size: 0.875rem;
+}
+.hiker-search-results {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  border: 1px solid #d9ded8;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.hiker-search-results li + li {
+  border-top: 1px solid #e5e9e4;
+}
+.hiker-search-results button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 10px 14px;
+  background: #fff;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+}
+.hiker-search-results button:hover {
+  background: #f3f6f3;
+}
+.hiker-search-results span {
+  color: #66736d;
+  font-size: 0.8rem;
+}
+.hiker-selected-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 8px;
+}
+.hiker-selected-card strong {
+  display: block;
+}
+.hiker-selected-meta {
+  color: #52606d;
+  font-size: 0.8rem;
+}
+.hiker-selected-card .btn-secondary {
+  width: auto;
+  padding: 8px 14px;
+}
+.hiker-field-error {
+  display: block;
+  margin-top: 6px;
+  color: #b91c1c;
+  font-size: 0.8rem;
+}
