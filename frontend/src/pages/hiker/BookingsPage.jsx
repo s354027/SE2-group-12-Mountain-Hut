@@ -36,11 +36,13 @@ export default function BookingsPage() {
   }, [user?.id]);
 
   function updateBooking(updatedBooking) {
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === updatedBooking.id ? updatedBooking : booking,
-      ),
-    );
+    setBookings((current) => {
+      return current.map((booking) =>
+        booking.id === updatedBooking.id
+          ? { ...booking, ...updatedBooking }
+          : booking,
+      );
+    });
   }
 
   return (
@@ -61,7 +63,11 @@ export default function BookingsPage() {
       ) : error ? (
         <p className="form-error" role="alert">{error}</p>
       ) : (
-        <BookingsList bookings={bookings} onBookingUpdated={updateBooking} />
+        <BookingsList
+          bookings={bookings}
+          hikerId={user.id}
+          onBookingUpdated={updateBooking}
+        />
       )}
     </section>
   );
