@@ -122,11 +122,11 @@ export default function StaffBooking() {
               <code>{confirmation.temporaryPassword}</code>
             </div>
           )}
-          {confirmation.password && (
+          {(confirmation.generatedPassword || confirmation.password) && (
             <div className="staff-booking-secret">
-              <strong>Generated password</strong>
-              <p>Share privately with the hiker.</p>
-              <code>{confirmation.password}</code>
+              <strong>Temporary password for the hiker</strong>
+              <p>Share this privately with the hiker. It may only be displayed once.</p>
+              <code>{confirmation.generatedPassword || confirmation.password}</code>
             </div>
           )}
           <button type="button" className="btn-primary" onClick={startAnother}>Create another booking</button>

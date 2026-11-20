@@ -18,6 +18,9 @@ test("hiker cannot access staff pages", async ({ page }) => {
     await page.goto("/staff/slots");
     await expect(page).toHaveURL("/");
 
+    await page.goto("/staff/bookings/new");
+    await expect(page).toHaveURL("/");
+
     await page.goto("/admin/staff/new");
     await expect(page).toHaveURL("/");
 });
@@ -33,6 +36,10 @@ test("employee can access staff slots but not warden administration", async ({ p
     await expect(page).toHaveURL("/staff/slots");
     await expect(page.getByRole("heading", { name: "Staff interface" })).toBeVisible();
 
+    await page.goto("/staff/bookings/new");
+    await expect(page).toHaveURL("/staff/bookings/new");
+    await expect(page.getByRole("heading", { name: "Reserve for a hiker" })).toBeVisible();
+
     await page.goto("/admin/staff/new");
     await expect(page).toHaveURL("/");
 });
@@ -47,6 +54,10 @@ test("warden can access staff and administration pages", async ({ page }) => {
     await page.goto("/staff/slots");
     await expect(page).toHaveURL("/staff/slots");
     await expect(page.getByRole("heading", { name: "Staff interface" })).toBeVisible();
+
+    await page.goto("/staff/bookings/new");
+    await expect(page).toHaveURL("/staff/bookings/new");
+    await expect(page.getByRole("heading", { name: "Reserve for a hiker" })).toBeVisible();
 
     await page.goto("/admin/staff/new");
     await expect(page).toHaveURL("/admin/staff/new");
@@ -102,4 +113,17 @@ test("hiker cannot call staff-only APIs directly", async ({ page }) => {
     );
 
     expect(tableResponse.status()).toBe(403);
+
+    const staffBookingResponse = await page.request.post(
+        "http://localhost:3000/api/bookings/staff",
+        {
+            data: {
+                slotId: 1,
+                numberOfPeople: 2,
+                hiker: { mode: "QUICK", firstName: "Unauthorized" },
+            },
+        },
+    );
+
+    expect(staffBookingResponse.status()).toBe(403);
 });
