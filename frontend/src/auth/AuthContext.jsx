@@ -2,10 +2,17 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import { api } from '../api/client.js';
 
 // Backend contract (backend/src/routes/auth.routes.js, cookie session):
-//   POST /api/auth/login   { email, password } -> { id, firstName, lastName, role }  | 401
+//   POST /api/auth/login   { email, password } -> { id, firstName, lastName, role, mustChangePassword }  | 401
+//                          (temporary hikers created by an employee always get 401)
 //   POST /api/auth/logout  -> 204
-//   GET  /api/auth/me      -> { id, role }  | 401 when not logged in
+//   GET  /api/auth/me      -> { id, role, mustChangePassword? }  | 401 when not logged in
+//                          (mustChangePassword: true until the generated password is changed)
+//   POST /api/auth/change-password { currentPassword, newPassword } -> 204 | 400 | 401
+//   POST /api/auth/forgot-password { email } -> 200 (always, even for unknown emails)
+//   POST /api/auth/reset-password  { token, newPassword } -> 204 | 400 invalid/expired link (24h)
 // Roles: 'HIKER' | 'EMPLOYEE' | 'WARDEN'. Not logged in => user === null.
+// While user.mustChangePassword is true, protected pages redirect to /change-password
+// and hiker booking endpoints answer 403 { code: 'PASSWORD_CHANGE_REQUIRED' }.
 
 const AuthContext = createContext(null);
 
@@ -38,13 +45,18 @@ export function AuthProvider({ children }) {
     return await api.post('/admin/staff', staffData);
   }
 
+  async function changePassword(currentPassword, newPassword) {
+    await api.post('/auth/change-password', { currentPassword, newPassword });
+    setUser((current) => (current ? { ...current, mustChangePassword: false } : current));
+  }
+
   async function logout() {
     await api.post('/auth/logout').catch(() => {});
     setUser(null);
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, registerStaff, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, register, registerStaff, changePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

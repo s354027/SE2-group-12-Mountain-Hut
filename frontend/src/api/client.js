@@ -13,6 +13,7 @@ async function request(method, path, body) {
   if (!res.ok) {
     const error = new Error((data && data.error) || `Request failed (${res.status})`);
     error.status = res.status;
+    error.code = data?.code; // e.g. 'PASSWORD_CHANGE_REQUIRED' (MH-07)
     throw error;
   }
   return data;

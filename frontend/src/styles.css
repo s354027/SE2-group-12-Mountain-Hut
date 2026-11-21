@@ -2848,3 +2848,161 @@ button:active:not(:disabled) {
   color: #b91c1c;
   font-size: 0.8rem;
 }
+
+/* MH-07 — password pages (login link, change / forgot / reset password).
+   Shares the auth-page layout; these rules only add the small pieces
+   the new screens need, using the same alpine tokens. */
+.auth-card .field-guide-kicker {
+  margin-bottom: 14px;
+}
+.auth-card .auth-lede {
+  margin: -12px 0 26px;
+  color: var(--alpine-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.field-label-row label {
+  margin-bottom: 0;
+}
+.auth-link {
+  color: var(--alpine-forest);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.auth-link:hover,
+.auth-link:focus-visible {
+  color: var(--alpine-clay);
+  text-decoration: underline;
+}
+.auth-footer {
+  margin: 24px 0 0;
+  padding-top: 18px;
+  border-top: 1px solid var(--alpine-line);
+  color: var(--alpine-muted);
+  font-size: 0.875rem;
+  text-align: center;
+}
+.auth-footer .auth-link {
+  font-size: inherit;
+}
+
+/* Password field with the show/hide toggle */
+.password-field {
+  position: relative;
+}
+.field .password-field input {
+  padding-right: 48px;
+}
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--alpine-forest);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.password-toggle:hover {
+  background: #edf3eb;
+}
+.password-toggle:focus-visible {
+  outline: 2px solid var(--alpine-forest);
+  outline-offset: 1px;
+}
+
+/* Callout shown when the password must be changed */
+.auth-notice {
+  display: flex;
+  gap: 12px;
+  margin: -8px 0 24px;
+  padding: 14px 16px;
+  border: 1px solid #ecd6c8;
+  border-left: 4px solid var(--alpine-clay);
+  border-radius: 10px;
+  background: #fbf4ee;
+  color: #5b3d2e;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.auth-notice i {
+  color: var(--alpine-clay);
+  font-size: 1.15rem;
+  line-height: 1.3;
+}
+.auth-notice strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #4a2f22;
+}
+
+/* Final state of a flow (email sent, password updated, invalid link) */
+.auth-result {
+  margin-top: 4px;
+}
+.auth-result-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: 18px;
+  border-radius: 50%;
+  background: #e5efe6;
+  color: var(--alpine-forest);
+  font-size: 1.5rem;
+}
+.auth-result-icon.is-warning {
+  background: #fbeee6;
+  color: var(--alpine-clay);
+}
+.auth-result h2 {
+  margin: 0 0 8px;
+  color: var(--alpine-deep);
+  font-family: Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+.auth-result p {
+  margin: 0 0 24px;
+  color: var(--alpine-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+a.btn-primary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+a.btn-primary:hover {
+  color: #fff;
+}
+.auth-text-button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+.form-error .auth-link {
+  margin-left: 4px;
+  color: inherit;
+  text-decoration: underline;
+}
