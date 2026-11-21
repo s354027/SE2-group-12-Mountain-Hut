@@ -308,3 +308,127 @@ test("cancelling slot edit does not save changes", async ({ page }) => {
 
     expect(updateRequests).toBe(0);
 });
+
+test("warden can copy tables from a previous slot when creating a new slot", async ({ page }) => {
+    await loginAsWarden(page);
+
+    await page.goto("/staff/slots");
+
+    const sourceDate = futureDate(25);
+    const targetDate = futureDate(26);
+
+    // ---------------------------------------------------------
+    // Create the source slot with Table 1 and Table 3
+    // ---------------------------------------------------------
+    await page.getByLabel("Date").fill(sourceDate);
+    await page.getByLabel("Start time").fill("18:00");
+    await page.getByLabel("Duration (minutes)").fill("60");
+    await page.getByLabel("Meal").selectOption("DINNER");
+    await page.getByLabel("Status").selectOption("OPEN");
+
+    await page.locator("details.slot-tables-dropdown > summary").click();
+
+    const table1 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 1", { exact: true }),
+    });
+
+    const table3 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 3", { exact: true }),
+    });
+
+    await table1.getByRole("checkbox").check();
+    await table3.getByRole("checkbox").check();
+
+    await expect(
+        page.getByText("Total capacity:").locator(".."),
+    ).toContainText("6 seats");
+
+    await page.getByRole("button", { name: "Add slot" }).click();
+
+    await expect(page.getByRole("status")).toHaveText("Slot created.");
+
+    // ---------------------------------------------------------
+    // Prepare a second slot
+    // ---------------------------------------------------------
+    await page.getByLabel("Date").fill(targetDate);
+    await page.getByLabel("Start time").fill("19:30");
+    await page.getByLabel("Duration (minutes)").fill("90");
+    await page.getByLabel("Meal").selectOption("DINNER");
+    await page.getByLabel("Status").selectOption("OPEN");
+
+    // No tables should initially be selected.
+    await expect(
+        page.locator("details.slot-tables-dropdown > summary"),
+    ).toHaveText("Select tables");
+
+    // ---------------------------------------------------------
+    // Copy tables from the source slot
+    // ---------------------------------------------------------
+    const copySelect = page.getByLabel("Copy tables from previous slot");
+
+    const sourceOption = copySelect.locator("option").filter({
+        hasText: `${sourceDate} · 18:00`,
+    });
+
+    const sourceValue = await sourceOption.getAttribute("value");
+
+    expect(sourceValue).not.toBeNull();
+
+    await copySelect.selectOption(sourceValue);
+
+    await page.getByRole("button", {
+        name: "Copy",
+        exact: true,
+    }).click();
+
+    await expect(page.getByRole("status")).toHaveText(
+        "Tables copied from the selected slot.",
+    );
+
+    // The copied tables must now be selected.
+    await page.locator("details.slot-tables-dropdown > summary").click();
+
+    await expect(table1.getByRole("checkbox")).toBeChecked();
+    await expect(table3.getByRole("checkbox")).toBeChecked();
+
+    await expect(
+        page.getByText("Total capacity:").locator(".."),
+    ).toContainText("6 seats");
+
+    // ---------------------------------------------------------
+    // Save the new slot
+    // ---------------------------------------------------------
+    await page.getByRole("button", { name: "Add slot" }).click();
+
+    await expect(page.getByRole("status")).toHaveText("Slot created.");
+
+    // ---------------------------------------------------------
+    // Verify that copied tables were actually persisted
+    // ---------------------------------------------------------
+    await goToCalendarDay(page, targetDate);
+
+    const targetRow = page.getByRole("row").filter({
+        hasText: "19:30",
+    });
+
+    await expect(targetRow).toContainText("19:30");
+    await expect(targetRow).toContainText("90");
+    await expect(targetRow).toContainText("DINNER");
+
+    await expect(
+        targetRow.getByRole("cell", {
+            name: "6",
+            exact: true,
+        }),
+    ).toBeVisible();
+
+    await expect(
+        targetRow.getByRole("cell", {
+            name: "1, 3",
+            exact: true,
+        }),
+    ).toBeVisible();
+
+    await expect(targetRow).toContainText("OPEN");
+});
+
