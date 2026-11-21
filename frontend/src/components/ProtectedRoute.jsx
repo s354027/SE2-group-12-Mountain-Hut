@@ -9,6 +9,10 @@ export default function ProtectedRoute({ roles }) {
   if (!user) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
+  // Accounts created by an employee must replace the generated password first (MH-07)
+  if (user.mustChangePassword && location.pathname !== '/change-password') {
+    return <Navigate to="/change-password" replace />;
+  }
   if (roles && !roles.includes(user.role)) return <Navigate to="/" replace />;
   return <Outlet />;
 }

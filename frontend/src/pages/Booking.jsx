@@ -100,7 +100,9 @@ export default function Booking() {
         state: { ...state, confirmed: message, partyRequirements: confirmedRequirements, },
       });
     } catch (requestError) {
-      if (
+      if (requestError.code === "PASSWORD_CHANGE_REQUIRED") {
+        navigate("/change-password", { replace: true });
+      } else if (
         requestError.status === 409 &&
         requestError.message === "Hiker already has a booking for this slot"
       ) {

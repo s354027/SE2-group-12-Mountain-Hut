@@ -11,6 +11,9 @@ import StaffSlots from "./pages/StaffSlots.jsx";
 import StaffBooking from "./pages/StaffBooking.jsx";
 import NotFound from "./pages/NotFound.jsx";
 import BookingsPage from "./pages/hiker/BookingsPage.jsx";
+import ChangePassword from "./pages/ChangePassword.jsx";
+import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 
 // One route per page. Each person fills in "their" page (see README).
 export default function App() {
@@ -22,6 +25,13 @@ export default function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="/search" element={<Search />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+
+        {/* any logged user */}
+        <Route element={<ProtectedRoute />}>
+          <Route path="/change-password" element={<ChangePassword />} />
+        </Route>
 
         {/* hiker only */}
         <Route element={<ProtectedRoute roles={["HIKER"]} />}>
