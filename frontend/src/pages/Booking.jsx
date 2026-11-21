@@ -39,7 +39,7 @@ export default function Booking() {
       : (state?.confirmed ?? null),
   );
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
-  const [partyRequirements, setPartyRequirements] = useState([]);
+  const [partyRequirements, setPartyRequirements] = useState(state?.partyRequirements ?? []);
   const [showRequirementsModal, setShowRequirementsModal] = useState(false);
   const [editingRequirementIndex, setEditingRequirementIndex] = useState(null);
 
@@ -83,17 +83,21 @@ export default function Booking() {
     setSubmitting(true);
 
     try {
-      await api.post("/bookings", {
+      const booking = await api.post("/bookings", {
         slotId: availability.slotId,
         numberOfPeople: Number(numberOfPeople),
         dietaryRequirements: partyRequirements,
       });
-      const message =
-        "Your table has been reserved successfully. You will receive a confirmation email.";
+
+      const confirmedRequirements = booking.dietaryRequirements ?? partyRequirements;
+
+      const message = "Your table has been reserved successfully. You will receive a confirmation email.";
+      
+      setPartyRequirements(confirmedRequirements);
       setConfirmation(message);
       navigate(`${location.pathname}${location.search}${location.hash}`, {
         replace: true,
-        state: { ...state, confirmed: message },
+        state: { ...state, confirmed: message, partyRequirements: confirmedRequirements, },
       });
     } catch (requestError) {
       if (
