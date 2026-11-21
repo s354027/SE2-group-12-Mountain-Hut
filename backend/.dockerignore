@@ -1,8 +1,0 @@
-node_modules
-coverage
-data
-*.sqlite
-*.sqlite3
-*.db
-npm-debug.log*
-.git

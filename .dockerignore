@@ -1,0 +1,16 @@
+backend/node_modules
+frontend/node_modules
+
+backend/coverage
+frontend/coverage
+frontend/dist
+
+backend/data
+*.sqlite
+*.sqlite3
+*.db
+
+.git
+.gitignore
+
+npm-debug.log*
