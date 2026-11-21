@@ -281,3 +281,244 @@ test("requirements edited before confirming are saved in their final version", a
     expect(stored.numberOfPeople).toBe(3);
     expect(stored.dietaryRequirements).toEqual(expectedRequirements);
 });
+
+
+test("hiker can book a table without party requirements", async ({ page }) => {
+    await openBooking(page, 2);
+
+    await expect(page.locator("li.party-requirement")).toHaveCount(0);
+
+    const { requestBody, status, body } = await confirmBooking(page);
+
+    expect(requestBody.dietaryRequirements).toEqual([]);
+
+    expect(status).toBe(201);
+    expect(body.status).toBe("CONFIRMED");
+    expect(body.numberOfPeople).toBe(2);
+    expect(body.dietaryRequirements).toEqual([]);
+
+    await expectBookingConfirmedPage(page);
+    await expect(page.locator("li.party-requirement")).toHaveCount(0);
+
+    const stored = await readBookingFromDb(body.id);
+
+    expect(stored.status).toBe("CONFIRMED");
+    expect(stored.dietaryRequirements).toEqual([]);
+});
+
+test("empty party requirement cannot be saved", async ({ page }) => {
+    await openBooking(page, 2);
+
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+
+    const modalTitle = page.getByRole("heading", {
+        name: "Add a requirement",
+    });
+
+    const descriptionField = page.getByLabel(
+        "Allergy or dietary requirement",
+    );
+
+    const saveButton = page.getByRole("button", {
+        name: "Save requirement",
+    });
+
+    await expect(modalTitle).toBeVisible();
+
+    // Empty requirement.
+    await expect(descriptionField).toHaveValue("");
+    await expect(saveButton).toBeDisabled();
+
+    // Whitespace-only requirement must still be invalid.
+    await descriptionField.fill("   ");
+    await expect(saveButton).toBeDisabled();
+
+    await expect(page.locator("li.party-requirement")).toHaveCount(0);
+});
+
+test("canceling a new requirement discards unsaved data", async ({ page }) => {
+    await openBooking(page, 2);
+
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+
+    const modalTitle = page.getByRole("heading", {
+        name: "Add a requirement",
+    });
+
+    const descriptionField = page.getByLabel(
+        "Allergy or dietary requirement",
+    );
+
+    const allergyCheckbox = page.getByLabel("This is an allergy");
+
+    await descriptionField.fill("Peanut allergy");
+    await allergyCheckbox.check();
+
+    await page.getByRole("button", {
+        name: "Cancel",
+        exact: true,
+    }).click();
+
+    await expect(modalTitle).not.toBeVisible();
+
+    // Nothing was added.
+    await expect(page.locator("li.party-requirement")).toHaveCount(0);
+
+    // Reopening the modal must start from a clean state.
+    await page.getByRole("button", { name: "Add", exact: true }).click();
+
+    await expect(descriptionField).toHaveValue("");
+    await expect(allergyCheckbox).not.toBeChecked();
+});
+
+test("canceling an edit keeps the original requirement unchanged", async ({ page }) => {
+    await openBooking(page, 2);
+
+    await addRequirement(page, "Vegetarian menu");
+    await expectRequirementBadge(page, "Vegetarian menu", "Diet");
+
+    await page
+        .getByRole("button", { name: "Edit requirement: Vegetarian menu" })
+        .click();
+
+    const modalTitle = page.getByRole("heading", {
+        name: "Edit requirement",
+    });
+
+    const descriptionField = page.getByLabel(
+        "Allergy or dietary requirement",
+    );
+
+    const allergyCheckbox = page.getByLabel("This is an allergy");
+
+    await descriptionField.fill("Peanut allergy");
+    await allergyCheckbox.check();
+
+    await page.getByRole("button", {
+        name: "Cancel",
+        exact: true,
+    }).click();
+
+    await expect(modalTitle).not.toBeVisible();
+
+    // The original requirement must still be there unchanged.
+    await expectRequirementBadge(page, "Vegetarian menu", "Diet");
+    await expect(requirementItem(page, "Peanut allergy")).toHaveCount(0);
+
+    const { requestBody, status, body } = await confirmBooking(page);
+
+    expect(status).toBe(201);
+    expect(requestBody.dietaryRequirements).toEqual([
+        {
+            allergies: false,
+            description: "Vegetarian menu",
+        },
+    ]);
+
+    expect(body.dietaryRequirements).toEqual([
+        {
+            allergies: false,
+            description: "Vegetarian menu",
+        },
+    ]);
+
+    const stored = await readBookingFromDb(body.id);
+
+    expect(stored.dietaryRequirements).toEqual([
+        {
+            allergies: false,
+            description: "Vegetarian menu",
+        },
+    ]);
+});
+
+test("removing the last requirement creates a booking with no requirements", async ({ page }) => {
+    await openBooking(page, 2);
+
+    await addRequirement(page, "Vegetarian menu");
+
+    await expect(page.locator("li.party-requirement")).toHaveCount(1);
+
+    await page
+        .getByRole("button", {
+            name: "Remove requirement: Vegetarian menu",
+        })
+        .click();
+
+    await expect(page.locator("li.party-requirement")).toHaveCount(0);
+
+    const { requestBody, status, body } = await confirmBooking(page);
+
+    expect(status).toBe(201);
+    expect(requestBody.dietaryRequirements).toEqual([]);
+    expect(body.dietaryRequirements).toEqual([]);
+
+    const stored = await readBookingFromDb(body.id);
+
+    expect(stored.dietaryRequirements).toEqual([]);
+});
+
+test("party requirements are shown in the hiker bookings list after confirmation", async ({ page }) => {
+    await openBooking(page, 2);
+
+    await addRequirement(page, "Vegetarian menu");
+    await addRequirement(page, "Peanut allergy", {
+        allergy: true,
+    });
+
+    const { status } = await confirmBooking(page);
+
+    expect(status).toBe(201);
+
+    await expectBookingConfirmedPage(page);
+
+    await page
+        .getByRole("button", { name: "View your bookings" })
+        .click();
+
+    await expect(page).toHaveURL("/bookings");
+    await expect(
+        page.getByRole("heading", { name: "Your Bookings" }),
+    ).toBeVisible();
+
+    await expect(
+        page.getByText("Dietary requirements", { exact: true }),
+    ).toBeVisible();
+
+    await expect(
+        page.getByText(
+            "Vegetarian menu, Peanut allergy",
+            { exact: true },
+        ),
+    ).toBeVisible();
+});
+
+test("confirmed party requirements remain visible after page reload", async ({ page }) => {
+    await openBooking(page, 2);
+
+    await addRequirement(page, "Vegetarian menu");
+
+    const { status } = await confirmBooking(page);
+    expect(status).toBe(201);
+
+    await expectBookingConfirmedPage(page);
+    await expectRequirementBadge(
+        page,
+        "Vegetarian menu",
+        "Diet",
+    );
+
+    await page.reload();
+
+    await expect(
+        page.getByRole("heading", {
+            name: "Booking confirmed",
+        }),
+    ).toBeVisible();
+
+    await expectRequirementBadge(
+        page,
+        "Vegetarian menu",
+        "Diet",
+    );
+});
