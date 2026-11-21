@@ -6,6 +6,7 @@ export default function Layout() {
   const isStaff = user && ['EMPLOYEE', 'WARDEN'].includes(user.role);
   const isWarden = user?.role === 'WARDEN';
   const isHiker = user?.role === 'HIKER';
+  const isEmployee = user?.role === 'EMPLOYEE';
 
   return (
     <div className="app-shell">
@@ -16,10 +17,10 @@ export default function Layout() {
         </NavLink>
         <nav aria-label="Main navigation" className="main-nav">
           <NavLink to="/" end>Home</NavLink>
-          <NavLink to="/search">Availability</NavLink>
+          {!isStaff && <NavLink to="/search">Availability</NavLink>}
           {isHiker && <NavLink to="/bookings">Bookings</NavLink>}
           {isStaff && <NavLink to="/staff/slots">Manage slots</NavLink>}
-          {isStaff && <NavLink to="/staff/bookings/new">Staff booking</NavLink>}
+          {isEmployee && <NavLink to="/staff/bookings/new">Staff booking</NavLink>}
           {isWarden && <NavLink to="/admin/staff/new">New staff</NavLink>}
         </nav>
         <div className="nav-actions">
