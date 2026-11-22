@@ -12,13 +12,47 @@ async function loginAsWarden(page) {
     await expect(page).toHaveURL("/");
 }
 
+// The slot calendar (MH-75) only shows one week/day at a time, and the date
+// is shown as a section heading rather than inside each row, so tests need
+// to navigate to a slot's day before looking for its row.
+function futureDate(daysFromNow) {
+    const date = new Date();
+    date.setDate(date.getDate() + daysFromNow);
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+}
+
+async function goToCalendarDay(page, dateStr) {
+    await page.getByRole("button", { name: "Day", exact: true }).click();
+    await page.getByRole("button", { name: "Today", exact: true }).click();
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const target = new Date(`${dateStr}T00:00:00`);
+    const diffDays = Math.round((target - today) / 86400000);
+
+    const step = diffDays >= 0
+        ? page.getByRole("button", { name: "Next period" })
+        : page.getByRole("button", { name: "Previous period" });
+
+    for (let i = 0; i < Math.abs(diffDays); i += 1) {
+        await step.click();
+    }
+}
+
 test("warden can create and update a slot", async ({ page }) => {
     await loginAsWarden(page);
 
     await page.goto("/staff/slots");
 
+    const date = futureDate(30);
+
     // CREATE
-    await page.getByLabel("Date").fill("2099-12-31");
+    await page.getByLabel("Date").fill(date);
     await page.getByLabel("Start time").fill("19:30");
     await page.getByLabel("Duration (minutes)").fill("90");
     await page.getByLabel("Meal").selectOption("DINNER");
@@ -43,7 +77,8 @@ test("warden can create and update a slot", async ({ page }) => {
     await page.getByRole("button", { name: "Add slot" }).click();
     await expect(page.getByRole("status")).toHaveText("Slot created.");
 
-    let slotRow = page.getByRole("row").filter({ hasText: "2099-12-31" });
+    await goToCalendarDay(page, date);
+    let slotRow = page.getByRole("row").filter({ hasText: "19:30" });
 
     await expect(slotRow).toContainText("19:30");
     await expect(slotRow).toContainText("90");
@@ -91,7 +126,7 @@ test("warden can create and update a slot", async ({ page }) => {
 
     await expect(page.getByRole("status")).toHaveText("Slot updated.");
 
-    slotRow = page.getByRole("row").filter({ hasText: "2099-12-31" });
+    slotRow = page.getByRole("row").filter({ hasText: "19:30" });
     await expect(slotRow.getByRole("cell", { name: "10", exact: true })).toBeVisible();
     await expect(slotRow.getByRole("cell", { name: "3, 5", exact: true })).toBeVisible();
     await expect(slotRow).toContainText("CLOSED");
@@ -102,7 +137,9 @@ test("slot form validates required fields", async ({ page }) => {
 
     await page.goto("/staff/slots");
 
-    await page.getByLabel("Date").fill("2099-12-30");
+    const date = futureDate(29);
+
+    await page.getByLabel("Date").fill(date);
     await page.getByLabel("Start time").fill("12:30");
     await page.getByLabel("Duration (minutes)").fill("60");
     await page.getByLabel("Meal").selectOption("LUNCH");
@@ -118,7 +155,8 @@ test("slot form validates required fields", async ({ page }) => {
     ).toHaveText("Select at least one table.");
 
     // Slot must not have been created.
-    await expect(page.getByRole("row").filter({ hasText: "2099-12-30" })).toHaveCount(0);
+    await goToCalendarDay(page, date);
+    await expect(page.getByRole("row").filter({ hasText: "12:30" })).toHaveCount(0);
 });
 
 
@@ -153,7 +191,9 @@ test("employee can create a slot", async ({ page }) => {
 
     await page.goto("/staff/slots");
 
-    await page.getByLabel("Date").fill("2099-12-29");
+    const date = futureDate(28);
+
+    await page.getByLabel("Date").fill(date);
     await page.getByLabel("Start time").fill("12:30");
     await page.getByLabel("Duration (minutes)").fill("60");
     await page.getByLabel("Meal").selectOption("LUNCH");
@@ -177,7 +217,8 @@ test("employee can create a slot", async ({ page }) => {
 
     await expect(page.getByRole("status")).toHaveText("Slot created.");
 
-    const slotRow = page.getByRole("row").filter({ hasText: "2099-12-29" });
+    await goToCalendarDay(page, date);
+    const slotRow = page.getByRole("row").filter({ hasText: "12:30" });
 
     await expect(slotRow).toContainText("12:30");
     await expect(slotRow).toContainText("60");
@@ -194,7 +235,8 @@ test("cancelling slot edit does not save changes", async ({ page }) => {
     await page.goto("/staff/slots");
 
     // Create a slot dedicated to this test.
-    await page.getByLabel("Date").fill("2099-12-28");
+    const date = futureDate(27);
+    await page.getByLabel("Date").fill(date);
     await page.getByLabel("Start time").fill("18:30");
     await page.getByLabel("Duration (minutes)").fill("60");
     await page.getByLabel("Meal").selectOption("DINNER");
@@ -221,7 +263,8 @@ test("cancelling slot edit does not save changes", async ({ page }) => {
 
     await expect(page.getByRole("status")).toHaveText("Slot created.");
 
-    const slotRow = page.getByRole("row").filter({ hasText: "2099-12-28" });
+    await goToCalendarDay(page, date);
+    const slotRow = page.getByRole("row").filter({ hasText: "18:30" });
 
     await expect(slotRow.getByRole("cell", { name: "6", exact: true })).toBeVisible();
     await expect(slotRow.getByRole("cell", { name: "1, 3", exact: true })).toBeVisible();
@@ -265,3 +308,127 @@ test("cancelling slot edit does not save changes", async ({ page }) => {
 
     expect(updateRequests).toBe(0);
 });
+
+test("warden can copy tables from a previous slot when creating a new slot", async ({ page }) => {
+    await loginAsWarden(page);
+
+    await page.goto("/staff/slots");
+
+    const sourceDate = futureDate(25);
+    const targetDate = futureDate(26);
+
+    // ---------------------------------------------------------
+    // Create the source slot with Table 1 and Table 3
+    // ---------------------------------------------------------
+    await page.getByLabel("Date").fill(sourceDate);
+    await page.getByLabel("Start time").fill("18:00");
+    await page.getByLabel("Duration (minutes)").fill("60");
+    await page.getByLabel("Meal").selectOption("DINNER");
+    await page.getByLabel("Status").selectOption("OPEN");
+
+    await page.locator("details.slot-tables-dropdown > summary").click();
+
+    const table1 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 1", { exact: true }),
+    });
+
+    const table3 = page.locator(".slot-table-option").filter({
+        has: page.getByText("Table 3", { exact: true }),
+    });
+
+    await table1.getByRole("checkbox").check();
+    await table3.getByRole("checkbox").check();
+
+    await expect(
+        page.getByText("Total capacity:").locator(".."),
+    ).toContainText("6 seats");
+
+    await page.getByRole("button", { name: "Add slot" }).click();
+
+    await expect(page.getByRole("status")).toHaveText("Slot created.");
+
+    // ---------------------------------------------------------
+    // Prepare a second slot
+    // ---------------------------------------------------------
+    await page.getByLabel("Date").fill(targetDate);
+    await page.getByLabel("Start time").fill("19:30");
+    await page.getByLabel("Duration (minutes)").fill("90");
+    await page.getByLabel("Meal").selectOption("DINNER");
+    await page.getByLabel("Status").selectOption("OPEN");
+
+    // No tables should initially be selected.
+    await expect(
+        page.locator("details.slot-tables-dropdown > summary"),
+    ).toHaveText("Select tables");
+
+    // ---------------------------------------------------------
+    // Copy tables from the source slot
+    // ---------------------------------------------------------
+    const copySelect = page.getByLabel("Copy tables from previous slot");
+
+    const sourceOption = copySelect.locator("option").filter({
+        hasText: `${sourceDate} · 18:00`,
+    });
+
+    const sourceValue = await sourceOption.getAttribute("value");
+
+    expect(sourceValue).not.toBeNull();
+
+    await copySelect.selectOption(sourceValue);
+
+    await page.getByRole("button", {
+        name: "Copy",
+        exact: true,
+    }).click();
+
+    await expect(page.getByRole("status")).toHaveText(
+        "Tables copied from the selected slot.",
+    );
+
+    // The copied tables must now be selected.
+    await page.locator("details.slot-tables-dropdown > summary").click();
+
+    await expect(table1.getByRole("checkbox")).toBeChecked();
+    await expect(table3.getByRole("checkbox")).toBeChecked();
+
+    await expect(
+        page.getByText("Total capacity:").locator(".."),
+    ).toContainText("6 seats");
+
+    // ---------------------------------------------------------
+    // Save the new slot
+    // ---------------------------------------------------------
+    await page.getByRole("button", { name: "Add slot" }).click();
+
+    await expect(page.getByRole("status")).toHaveText("Slot created.");
+
+    // ---------------------------------------------------------
+    // Verify that copied tables were actually persisted
+    // ---------------------------------------------------------
+    await goToCalendarDay(page, targetDate);
+
+    const targetRow = page.getByRole("row").filter({
+        hasText: "19:30",
+    });
+
+    await expect(targetRow).toContainText("19:30");
+    await expect(targetRow).toContainText("90");
+    await expect(targetRow).toContainText("DINNER");
+
+    await expect(
+        targetRow.getByRole("cell", {
+            name: "6",
+            exact: true,
+        }),
+    ).toBeVisible();
+
+    await expect(
+        targetRow.getByRole("cell", {
+            name: "1, 3",
+            exact: true,
+        }),
+    ).toBeVisible();
+
+    await expect(targetRow).toContainText("OPEN");
+});
+

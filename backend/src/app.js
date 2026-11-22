@@ -6,8 +6,11 @@ import { createAdminRouter } from './routes/admin.routes.js';
 import availabilityRouter from './routes/availability.routes.js';
 import { createSlotRouter } from './routes/slot.routes.js';
 import { createTableRouter } from './routes/table.routes.js';
-import { models } from './db/index.js';
+import { models, sequelize } from './db/index.js';
+import { createHikerRouter } from './routes/hiker.routes.js';
 import bookingRouter from './routes/booking.routes.js';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const app = express();
 
@@ -44,7 +47,25 @@ app.use('/api/auth', createAuthRouter(models));
 app.use('/api/admin', createAdminRouter(models));
 app.use('/api/availability', availabilityRouter);
 app.use('/api/bookings', bookingRouter);
+app.use('/api/hikers', createHikerRouter({ User: models.User, sequelize }));
 app.use('/api/slots', createSlotRouter(models));
 app.use('/api/tables', createTableRouter(models));
+
+if (process.env.SERVE_FRONTEND === 'true') {
+    const currentDir = path.dirname(fileURLToPath(import.meta.url));
+    const frontendDist = path.resolve(currentDir, '../frontend-dist');
+
+    app.use(express.static(frontendDist));
+
+    // React Router fallback:
+    // requests such as /bookings or /search must return index.html
+    app.use((req, res, next) => {
+        if (req.method !== 'GET' || req.path.startsWith('/api')) {
+            return next();
+        }
+
+        return res.sendFile(path.join(frontendDist, 'index.html'));
+    });
+}
 
 export default app;

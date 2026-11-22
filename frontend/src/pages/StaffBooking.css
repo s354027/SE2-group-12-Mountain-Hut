@@ -1,0 +1,110 @@
+
+.staff-booking-page {
+  max-width: 1050px;
+  margin: 0 auto;
+  padding: 2rem 0 4rem;
+  color: #244c3d;
+}
+
+.staff-booking-header {
+  margin-bottom: 2rem;
+}
+
+.staff-booking-header h1 {
+  margin: 0.7rem 0;
+}
+
+.staff-booking-header p {
+  color: #536b60;
+}
+
+.staff-booking-panel {
+  border: 1px solid #d8e2d9;
+  border-radius: 16px;
+  padding: 1.5rem;
+  background: #fffefa;
+  margin: 1.25rem 0;
+}
+
+.staff-booking-panel h2 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.staff-booking-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: end;
+}
+
+.staff-booking-fields label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  font-weight: 600;
+}
+
+.staff-booking-fields input,
+.staff-booking-fields select {
+  min-width: 0;
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #cbd9cf;
+  border-radius: 9px;
+  background: white;
+}
+
+.staff-booking-fields button {
+  min-height: 46px;
+}
+
+.staff-booking-available {
+  background: #edf6ee;
+  border: 1px solid #a8c9af;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 1rem;
+}
+
+.staff-booking-available p {
+  margin: 0.4rem 0 0;
+}
+
+.staff-booking-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.staff-booking-secret {
+  border: 1px solid #e5c985;
+  background: #fff9e7;
+  padding: 1rem;
+  border-radius: 10px;
+  margin: 1rem 0;
+}
+
+.staff-booking-secret code {
+  display: inline-block;
+  padding: 0.5rem;
+  background: white;
+  overflow-wrap: anywhere;
+}
+
+/* Error message spacing */
+.staff-booking-panel .form-error {
+  margin-top: 20px;
+  padding: 16px 20px;
+}
+
+/* Responsive layout */
+@media (max-width: 750px) {
+  .staff-booking-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .staff-booking-panel {
+    padding: 1rem;
+  }
+}

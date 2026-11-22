@@ -42,6 +42,7 @@ describe("Slot Controller", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(console, "error").mockImplementation(() => {});
+    findAll.mockResolvedValue([]);
   });
 
   afterEach(() => {
@@ -835,5 +836,406 @@ describe("Slot Controller", () => {
     expect(res.json).toHaveBeenCalledWith({
       error: "Failed to copy tables from slot",
     });
+  });
+
+  // slots overlap
+  // CREATE SLOT
+  it("should return 409 when creating a slot that overlaps an existing slot", async () => {
+    findAll.mockResolvedValue([
+      {
+        id: 1,
+        date: "2024-06-01",
+        startTime: "12:00:00",
+        duration: 120,
+      },
+    ]);
+
+    const req = mockReq({
+      body: {
+        date: "2024-06-01",
+        startTime: "13:00",
+        duration: 60,
+        meal: "LUNCH",
+        totalCapacity: 4,
+      },
+    });
+    const res = mockRes();
+
+    await createSlot(req, res);
+
+    expect(findAll).toHaveBeenCalledWith({where: { date: "2024-06-01" }});
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({error: "Slot overlaps with an existing slot"});
+
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("should allow creating a slot that starts when another slot ends", async () => {
+    findAll.mockResolvedValue([
+      {
+        id: 1,
+        date: "2024-06-01",
+        startTime: "12:00:00",
+        duration: 120,
+      },
+    ]);
+
+    const newSlot = {
+      id: 10,
+      setTables: vi.fn(),
+    };
+
+    findByPk.mockResolvedValue({ id: 10 });
+    create.mockResolvedValue(newSlot);
+
+    const req = mockReq({
+      body: {
+        date: "2024-06-01",
+        startTime: "14:00",
+        duration: 60,
+        meal: "LUNCH",
+        totalCapacity: 4,
+      },
+    });
+    const res = mockRes();
+
+    await createSlot(req, res);
+
+    expect(create).toHaveBeenCalledWith({
+      date: "2024-06-01",
+      startTime: "14:00",
+      duration: 60,
+      meal: "LUNCH",
+      totalCapacity: 4,
+      status: "OPEN",
+    });
+
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("should check overlapping slots only on the requested date", async () => {
+    const newSlot = {
+      id: 10,
+      setTables: vi.fn(),
+    };
+
+    findAll.mockResolvedValue([]);
+    findByPk.mockResolvedValue({ id: 10 });
+    create.mockResolvedValue(newSlot);
+
+    const req = mockReq({
+      body: {
+        date: "2024-06-02",
+        startTime: "12:00",
+        duration: 60,
+        meal: "LUNCH",
+        totalCapacity: 4,
+      },
+    });
+    const res = mockRes();
+
+    await createSlot(req, res);
+
+    expect(findAll).toHaveBeenCalledWith({
+      where: { date: "2024-06-02" },
+    });
+
+    expect(create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  // UPDATE SLOT
+  it("should return 409 when updating a slot causes an overlap", async () => {
+    const slot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "15:00",
+      duration: 60,
+      update: vi.fn(),
+    };
+
+    findByPk.mockResolvedValue(slot);
+
+    findAll.mockResolvedValue([
+      {
+        id: 7,
+        date: "2024-06-01",
+        startTime: "12:00:00",
+        duration: 120,
+      },
+    ]);
+
+    const req = mockReq({
+      params: { id: "42" },
+      body: {
+        startTime: "13:00",
+      },
+    });
+
+    const res = mockRes();
+
+    await updateSlot(req, res);
+
+    expect(findAll).toHaveBeenCalledWith({
+      where: { date: "2024-06-01" },
+    });
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Slot overlaps with an existing slot",
+    });
+
+    expect(slot.update).not.toHaveBeenCalled();
+  });
+
+  it("should allow updating a slot to start when another slot ends", async () => {
+    const slot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "15:00",
+      duration: 60,
+      update: vi.fn(),
+    };
+
+    const updatedSlot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "14:00",
+      duration: 60,
+    };
+
+    findByPk
+      .mockResolvedValueOnce(slot)
+      .mockResolvedValueOnce(updatedSlot);
+
+    findAll.mockResolvedValue([
+      {
+        id: 7,
+        date: "2024-06-01",
+        startTime: "12:00:00",
+        duration: 120,
+      },
+    ]);
+
+    const req = mockReq({
+      params: { id: "42" },
+      body: {
+        startTime: "14:00",
+      },
+    });
+
+    const res = mockRes();
+
+    await updateSlot(req, res);
+
+    expect(slot.update).toHaveBeenCalledWith({
+      startTime: "14:00",
+    });
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(updatedSlot);
+  });
+
+  it("should ignore the slot itself when checking overlaps on update", async () => {
+    const slot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "12:00",
+      duration: 60,
+      update: vi.fn(),
+    };
+
+    const updatedSlot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "12:00",
+      duration: 60,
+      status: "CLOSED",
+    };
+
+    findByPk
+      .mockResolvedValueOnce(slot)
+      .mockResolvedValueOnce(updatedSlot);
+
+    // findAll also returns the slot currently being updated.
+    findAll.mockResolvedValue([
+      {
+        id: 42,
+        date: "2024-06-01",
+        startTime: "12:00:00",
+        duration: 60,
+      },
+    ]);
+
+    const req = mockReq({
+      params: { id: "42" },
+      body: {
+        status: "CLOSED",
+      },
+    });
+
+    const res = mockRes();
+
+    await updateSlot(req, res);
+
+    expect(slot.update).toHaveBeenCalledWith({
+      status: "CLOSED",
+    });
+
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.json).toHaveBeenCalledWith(updatedSlot);
+  });
+
+  // MH-78: additional overlapping-slot cases
+  it("should return 409 when the new slot fully contains an existing slot", async () => {
+    findAll.mockResolvedValue([
+      { id: 1, date: "2024-06-01", startTime: "12:30:00", duration: 30 },
+    ]);
+
+    const req = mockReq({
+      body: {
+        date: "2024-06-01",
+        startTime: "12:00",
+        duration: 120,
+        meal: "LUNCH",
+        totalCapacity: 4,
+      },
+    });
+    const res = mockRes();
+
+    await createSlot(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Slot overlaps with an existing slot",
+    });
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("should not touch tables when creating an overlapping slot", async () => {
+    findAll.mockResolvedValue([
+      { id: 1, date: "2024-06-01", startTime: "12:00:00", duration: 60 },
+    ]);
+
+    const req = mockReq({
+      body: {
+        date: "2024-06-01",
+        startTime: "12:00",
+        duration: 60,
+        meal: "LUNCH",
+        tableIds: [1, 2],
+      },
+    });
+    const res = mockRes();
+
+    await createSlot(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(findAllTables).not.toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("should allow creating a slot contiguous on both sides (12-13, 13-14, 14-15)", async () => {
+    findAll.mockResolvedValue([
+      { id: 1, date: "2024-06-01", startTime: "12:00:00", duration: 60 },
+      { id: 2, date: "2024-06-01", startTime: "14:00:00", duration: 60 },
+    ]);
+    create.mockResolvedValue({ id: 10, setTables: vi.fn() });
+    findByPk.mockResolvedValue({ id: 10 });
+
+    const req = mockReq({
+      body: {
+        date: "2024-06-01",
+        startTime: "13:00",
+        duration: 60,
+        meal: "LUNCH",
+        totalCapacity: 4,
+      },
+    });
+    const res = mockRes();
+
+    await createSlot(req, res);
+
+    expect(create).toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("should return 409 when extending only the duration makes the slot overlap the next one", async () => {
+    const slot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "12:00:00",
+      duration: 60,
+      update: vi.fn(),
+      setTables: vi.fn(),
+    };
+    findByPk.mockResolvedValue(slot);
+    findAll.mockResolvedValue([
+      slot,
+      { id: 7, date: "2024-06-01", startTime: "13:00:00", duration: 60 },
+    ]);
+
+    const req = mockReq({ params: { id: "42" }, body: { duration: 90 } });
+    const res = mockRes();
+
+    await updateSlot(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith({
+      error: "Slot overlaps with an existing slot",
+    });
+    expect(slot.update).not.toHaveBeenCalled();
+  });
+
+  it("should check overlaps on the new date when moving a slot to another day", async () => {
+    const slot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "12:00:00",
+      duration: 60,
+      update: vi.fn(),
+      setTables: vi.fn(),
+    };
+    findByPk.mockResolvedValue(slot);
+    findAll.mockResolvedValue([
+      { id: 9, date: "2024-06-02", startTime: "12:30:00", duration: 60 },
+    ]);
+
+    const req = mockReq({ params: { id: "42" }, body: { date: "2024-06-02" } });
+    const res = mockRes();
+
+    await updateSlot(req, res);
+
+    expect(findAll).toHaveBeenCalledWith({ where: { date: "2024-06-02" } });
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(slot.update).not.toHaveBeenCalled();
+  });
+
+  it("should not change tables when an update is rejected for overlap", async () => {
+    const slot = {
+      id: 42,
+      date: "2024-06-01",
+      startTime: "15:00:00",
+      duration: 60,
+      update: vi.fn(),
+      setTables: vi.fn(),
+    };
+    findByPk.mockResolvedValue(slot);
+    findAll.mockResolvedValue([
+      { id: 7, date: "2024-06-01", startTime: "12:00:00", duration: 120 },
+    ]);
+
+    const req = mockReq({
+      params: { id: "42" },
+      body: { startTime: "12:30", tableIds: [1, 2] },
+    });
+    const res = mockRes();
+
+    await updateSlot(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(findAllTables).not.toHaveBeenCalled();
+    expect(slot.setTables).not.toHaveBeenCalled();
+    expect(slot.update).not.toHaveBeenCalled();
   });
 });

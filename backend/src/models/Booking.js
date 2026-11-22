@@ -43,6 +43,26 @@ export function defineBooking(sequelize) {
         allergyDescription: {
             type: DataTypes.TEXT,
             allowNull: true
+        },
+
+        // List of requirements for subsets of the party (MH-05 improvement),
+        // each shaped as { allergies: boolean, description: string }.
+        // Stored as JSON text since sqlite has no native array column.
+        dietaryRequirements: {
+            type: DataTypes.TEXT,
+            allowNull: true,
+            get() {
+                const raw = this.getDataValue('dietaryRequirements');
+                return raw ? JSON.parse(raw) : [];
+            },
+            set(value) {
+                this.setDataValue(
+                    'dietaryRequirements',
+                    Array.isArray(value) && value.length > 0
+                        ? JSON.stringify(value)
+                        : null
+                );
+            }
         }
     }, {
         tableName: 'bookings',

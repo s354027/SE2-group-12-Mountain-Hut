@@ -1,15 +1,15 @@
 services:
-  mailpit:
-    image: axllent/mailpit
-    container_name: mailpit
+  app:
+    image: s293687/se2-group-12-mountain-hut:latest
+    container_name: mountain-hut
     restart: unless-stopped
+
     volumes:
-      - ./data:/data
+      - backend_data:/app/data
+
     ports:
-      - 8025:8025
-      - 1025:1025
-    environment:
-      MP_MAX_MESSAGES: 5000
-      MP_DATABASE: /data/mailpit.db
-      MP_SMTP_AUTH_ACCEPT_ANY: 1
-      MP_SMTP_AUTH_ALLOW_INSECURE: 1
+      - "3000:3000"
+      - "8025:8025"
+
+volumes:
+  backend_data:

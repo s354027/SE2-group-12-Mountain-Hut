@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { requireRole } from '../middleware/requireRole.js';
-import { createBooking } from '../controllers/bookingController.js';
+import { requirePasswordChanged } from '../middleware/requirePasswordChanged.js';
+import { createBooking, createStaffBooking, cancelBooking, modifyBooking } from '../controllers/bookingController.js';
 
 const router = Router();
 
@@ -13,7 +14,42 @@ router.post(
   '/',
   requireAuth,
   requireRole('HIKER'),
+  requirePasswordChanged,
   createBooking
+);
+
+/**
+ * POST /api/bookings/staff
+ * An employee enters a reservation on behalf of a hiker (MH-07).
+ */
+router.post(
+  '/staff',
+  requireAuth,
+  requireRole('EMPLOYEE'),
+  createStaffBooking
+);
+
+/**
+ * PATCH /api/bookings/:id
+ * Modify a booking owned by the authenticated hiker.
+ */
+router.patch(
+  '/:id',
+  requireAuth,
+  requireRole('HIKER'),
+  requirePasswordChanged,
+  modifyBooking
+);
+
+/**
+ * PATCH /api/bookings/:id/cancel
+ * Cancel an active booking.
+ */
+router.patch(
+  '/:id/cancel',
+  requireAuth,
+  requireRole('WARDEN'), // maybe an EMPLOYEE could do this too (but the user story doesn't specify it)
+  cancelBooking
 );
 
 export default router;

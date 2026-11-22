@@ -57,7 +57,7 @@ export const verifyTransporter = async () => {
 };
 
 /**
- * Sends a booking confirmation email to the specified recipient.
+ * Sends a booking email to the specified recipient.
  * @param {string} to The recipient's email address.
  * @param {string} username The name of the user making the reservation.
  * @param {number} reservationId The unique identifier for the reservation.
@@ -68,7 +68,7 @@ export const verifyTransporter = async () => {
  * @param {string|null} partyRequirements Any requirements provided for the party.
  * @returns {Promise<boolean>} Returns true if the email was sent successfully, false otherwise.
  */
-export const sendBookingConfirmation = async (
+async function sendBookingEmail(
   to,
   username,
   reservationId,
@@ -77,7 +77,8 @@ export const sendBookingConfirmation = async (
   slotEnd,
   partySize,
   partyRequirements = null,
-) => {
+  isModification = false,
+) {
   if (typeof to !== "string" || !to.trim()) {
     throw new TypeError("to must be a non-empty email address");
   }
@@ -97,13 +98,27 @@ export const sendBookingConfirmation = async (
     throw new TypeError("partyRequirements must be a string or null");
   }
 
-  const subject = `Booking Confirmation #${reservationId}`;
+  const subject = isModification
+    ? `Booking Updated #${reservationId}`
+    : `Booking Confirmation #${reservationId}`;
+  const title = isModification
+    ? "Your Reservation Has Been Updated"
+    : "Your Reservation Is Confirmed! 🥳";
+  const introduction = isModification
+    ? "The changes to your reservation have been saved. Here are the updated details:"
+    : "We are pleased to confirm your reservation. Here are the details of your booking:";
+  const closing = isModification
+    ? "If you did not request this change, please contact the Mountain Hut team."
+    : "We look forward to welcoming you and providing you with a wonderful dining experience.";
+  const footer = isModification
+    ? "This is an automated reservation update email."
+    : "This is an automated reservation confirmation email.";
 
   const html = `
   <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 28px auto 0; padding: 28px;">
-    <h1 style="color: #1a3a2a; margin-top: 0;">Your Reservation Is Confirmed! 🥳</h1>
+    <h1 style="color: #1a3a2a; margin-top: 0;">${title}</h1>
     <p>Dear ${username},</p>
-    <p>We are pleased to confirm your reservation. Here are the details of your booking:</p>
+    <p>${introduction}</p>
   
     <div style="font-size: 14px; font-weight: bold; margin-bottom: 12px; width: 100%; max-width: 340px;">
       Booking reference: <span style="font-size: 16px;">#${reservationId}</span>
@@ -167,12 +182,62 @@ export const sendBookingConfirmation = async (
       
     </div>
   
-    <p>We look forward to welcoming you and providing you with a wonderful dining experience.</p>
+    <p>${closing}</p>
     <p>See you soon!<br><strong>The Mountain Hut Team</strong></p>
     
     <hr style="border: none; border-top: 1px solid #e2e8e4; margin: 20px 0; width: 100%">
     
-    <p style="font-size: 12px; margin: 0; color: #777; text-align: center;">This is an automated reservation confirmation email.</p>
+    <p style="font-size: 12px; margin: 0; color: #777; text-align: center;">${footer}</p>
+  </div>
+  `;
+  return await sendEmail(to, subject, html);
+}
+
+export function sendBookingConfirmation(
+  to, username, reservationId, date, slotStart, slotEnd, partySize, partyRequirements = null
+) {
+  return sendBookingEmail(to, username, reservationId, date, slotStart, slotEnd, partySize, partyRequirements);
+}
+
+export function sendBookingModification(
+  to, username, reservationId, date, slotStart, slotEnd, partySize, partyRequirements = null
+) {
+  return sendBookingEmail(to, username, reservationId, date, slotStart, slotEnd, partySize, partyRequirements, true);
+}
+
+/**
+ * Sends the password recovery email (MH-07).
+ * @param {string} to The recipient's email address.
+ * @param {string} username The name of the user.
+ * @param {string} resetLink The single-use link to reset the password.
+ * @returns {Promise<boolean>} Returns true if the email was sent successfully, false otherwise.
+ */
+export const sendPasswordResetEmail = async (to, username, resetLink) => {
+  if (typeof to !== "string" || !to.trim()) {
+    throw new TypeError("to must be a non-empty email address");
+  }
+  if (typeof username !== "string" || !username.trim()) {
+    throw new TypeError("username must be a non-empty string");
+  }
+  if (typeof resetLink !== "string" || !resetLink.trim()) {
+    throw new TypeError("resetLink must be a non-empty string");
+  }
+
+  const subject = "Reset your Mountain Hut password";
+
+  const html = `
+  <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 28px auto 0; padding: 28px;">
+    <h1 style="color: #1a3a2a; margin-top: 0;">Password reset</h1>
+    <p>Dear ${username},</p>
+    <p>We received a request to reset the password of your Mountain Hut account.</p>
+    <p style="margin: 24px 0;">
+      <a href="${resetLink}" style="background-color: #1a3a2a; color: #fff; padding: 10px 18px; border-radius: 6px; text-decoration: none; font-weight: bold;">Choose a new password</a>
+    </p>
+    <p>The link can be used only once and expires in 24 hours.</p>
+    <p>If you did not request a password reset, you can safely ignore this email.</p>
+    <p><strong>The Mountain Hut Team</strong></p>
+    <hr style="border: none; border-top: 1px solid #e2e8e4; margin: 20px 0; width: 100%">
+    <p style="font-size: 12px; margin: 0; color: #777; text-align: center;">This is an automated email.</p>
   </div>
   `;
   return await sendEmail(to, subject, html);

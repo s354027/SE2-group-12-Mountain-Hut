@@ -1,4 +1,5 @@
 import { Op } from 'sequelize';
+import { findOverlappingSlot } from '../services/slotOverlap.js';
 
 export function createSlotController({ Slot, DiningTable, Booking }) {
   /**
@@ -94,6 +95,19 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
     }
 
     try {
+      const sameDaySlots = await Slot.findAll({ //find all the slots that share the same date with the new one
+        where: { date }
+      });
+
+      const overlapping = findOverlappingSlot(
+        { startTime, duration: parsedDuration },
+        sameDaySlots
+      );
+
+      if (overlapping) {
+        return res.status(409).json({error: 'Slot overlaps with an existing slot'});
+      }
+
       let tables = [];
       let capacity = totalCapacity ? Number(totalCapacity) : 0;
 
@@ -196,6 +210,23 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
         updateData.meal = normalizedMeal;
       }
       if (status) updateData.status = status;
+
+      // reject updates that would overlap another slot
+      const finalDate = date ?? slot.date;
+      const finalStartTime = startTime ?? slot.startTime;
+      const finalDuration = updateData.duration ?? slot.duration;
+
+      const sameDaySlots = await Slot.findAll({where: { date: finalDate }});
+
+      const overlapping = findOverlappingSlot(
+        { startTime: finalStartTime, duration: finalDuration },
+        sameDaySlots,
+        slot.id
+      );
+
+      if (overlapping) {
+        return res.status(409).json({error: 'Slot overlaps with an existing slot'});
+      }
 
       // Updating tables if provided with a tableIds array
       if (Array.isArray(tableIds)) {

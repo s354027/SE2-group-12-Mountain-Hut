@@ -13,6 +13,7 @@ async function request(method, path, body) {
   if (!res.ok) {
     const error = new Error((data && data.error) || `Request failed (${res.status})`);
     error.status = res.status;
+    error.code = data?.code; // e.g. 'PASSWORD_CHANGE_REQUIRED' (MH-07)
     throw error;
   }
   return data;
@@ -22,5 +23,6 @@ export const api = {
   get: (path) => request('GET', path),
   post: (path, body) => request('POST', path, body),
   put: (path, body) => request('PUT', path, body),
+  patch: (path, body) => request('PATCH', path, body),
   del: (path) => request('DELETE', path),
 };

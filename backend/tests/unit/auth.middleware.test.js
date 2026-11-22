@@ -3,6 +3,7 @@
 import { describe, it, expect } from 'vitest';
 import { requireAuth } from '../../src/middleware/requireAuth.js';
 import { requireRole } from '../../src/middleware/requireRole.js';
+import { requireAuthorizedHiker } from '../../src/middleware/requireAuthorizedHiker.js';
 
 // Minimal fake of the Express response: remembers status code and body.
 function fakeRes() {
@@ -15,11 +16,11 @@ function fakeRes() {
 }
 
 // Runs a middleware with a fake request and reports what happened.
-function run(middleware, session) {
+function run(middleware, session, params = {}) {
   const res = fakeRes();
   let nextCalled = false;
-  middleware({ session }, res, () => { nextCalled = true; });
-  return { status: res.statusCode, nextCalled };
+  middleware({ session, params }, res, () => { nextCalled = true; });
+  return { status: res.statusCode, body: res.body, nextCalled };
 }
 
 const loggedIn = (role) => ({ user: { id: 1, role } });
@@ -88,5 +89,31 @@ describe('requireRole', () => {
   it('role names are case sensitive ("hiker" is not "HIKER")', () => {
     const r = run(requireRole('HIKER'), loggedIn('hiker'));
     expect(r.status).toBe(403);
+  });
+});
+
+describe('requireAuthorizedHiker', () => {
+  it('allows the hiker to access their own resource when IDs are numeric strings', () => {
+    const r = run(requireAuthorizedHiker, { user: { id: 7 } }, { id: '7' });
+    expect(r.nextCalled).toBe(true);
+    expect(r.status).toBe(null);
+  });
+
+  it('denies access to another hiker resource', () => {
+    const r = run(requireAuthorizedHiker, { user: { id: 7 } }, { id: '8' });
+    expect(r.status).toBe(403);
+    expect(r.body).toEqual({ error: 'Unauthorized' });
+    expect(r.nextCalled).toBe(false);
+  });
+
+  it.each([
+    [undefined, '7'],
+    [{ user: {} }, '7'],
+    [{ user: { id: 0 } }, '7'],
+    [{ user: { id: 7 } }, 'invalid'],
+  ])('denies missing or invalid IDs', (session, id) => {
+    const r = run(requireAuthorizedHiker, session, { id });
+    expect(r.status).toBe(403);
+    expect(r.nextCalled).toBe(false);
   });
 });

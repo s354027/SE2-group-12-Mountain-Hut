@@ -1,6 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
+import RequirementsList from "../components/RequirementsList.jsx";
+import RequirementsModal from "../components/RequirementsModal.jsx";
+import BookingProgress from "../components/BookingProgress.jsx";
 
 function formatTime(time) {
   return time ? time.slice(0, 5) : "Not available";
@@ -16,25 +19,62 @@ function getSlotEndTime(startTime, endTime, duration) {
   const [hours, minutes] = startTime.split(":").map(Number);
   const end = new Date(2000, 0, 1, hours, minutes);
   end.setMinutes(end.getMinutes() + Number(duration));
-  
+
   return end.toTimeString().slice(0, 5);
 }
 
 export default function Booking() {
   const navigate = useNavigate();
-  const { state } = useLocation();
+  const location = useLocation();
+  const { state } = location;
   const availability = state?.availability ?? null;
   const date = availability?.date ?? state?.date;
   const requestedTime = state?.time;
   const numberOfPeople = availability?.partySize ?? state?.numberOfPeople;
-  const [allergyFlag, setAllergyFlag] = useState(false);
-  const [allergyDescription, setAllergyDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
-  const [confirmation, setConfirmation] = useState(null);
-  const [confirmedAllergyDescription, setConfirmedAllergyDescription] =
-    useState(null);
+  const [confirmation, setConfirmation] = useState(
+    state?.confirmed === true
+      ? "Your table has been reserved successfully. You will receive a confirmation email."
+      : (state?.confirmed ?? null),
+  );
   const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
+  const [partyRequirements, setPartyRequirements] = useState(state?.partyRequirements ?? []);
+  const [showRequirementsModal, setShowRequirementsModal] = useState(false);
+  const [editingRequirementIndex, setEditingRequirementIndex] = useState(null);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, []);
+
+  const editingRequirement =
+    editingRequirementIndex === null
+      ? null
+      : partyRequirements[editingRequirementIndex];
+
+  function closeRequirementsModal() {
+    setShowRequirementsModal(false);
+    setEditingRequirementIndex(null);
+  }
+
+  function saveRequirement(requirement) {
+    if (editingRequirementIndex === null) {
+      setPartyRequirements((current) => [...current, requirement]);
+    } else {
+      setPartyRequirements((current) =>
+        current.map((item, index) =>
+          index === editingRequirementIndex ? requirement : item,
+        ),
+      );
+    }
+    closeRequirementsModal();
+  }
+
+  function removeRequirement(index) {
+    setPartyRequirements((current) =>
+      current.filter((_, requirementIndex) => requirementIndex !== index),
+    );
+  }
 
   async function confirmBooking() {
     setError(null);
@@ -43,28 +83,34 @@ export default function Booking() {
     setSubmitting(true);
 
     try {
-      await api.post("/bookings", {
+      const booking = await api.post("/bookings", {
         slotId: availability.slotId,
         numberOfPeople: Number(numberOfPeople),
-        allergyFlag,
-        allergyDescription: allergyFlag ? allergyDescription : null,
+        dietaryRequirements: partyRequirements,
       });
-      setConfirmation(
-        "Your table has been reserved successfully. You will receive a confirmation email.",
-      );
-      setConfirmedAllergyDescription(
-        allergyFlag ? allergyDescription.trim() : null,
-      );
-      setAllergyFlag(false);
-      setAllergyDescription("");
+
+      const confirmedRequirements = booking.dietaryRequirements ?? partyRequirements;
+
+      const message = "Your table has been reserved successfully. You will receive a confirmation email.";
+      
+      setPartyRequirements(confirmedRequirements);
+      setConfirmation(message);
+      navigate(`${location.pathname}${location.search}${location.hash}`, {
+        replace: true,
+        state: { ...state, confirmed: message, partyRequirements: confirmedRequirements, },
+      });
     } catch (requestError) {
-      if (
+      if (requestError.code === "PASSWORD_CHANGE_REQUIRED") {
+        navigate("/change-password", { replace: true });
+      } else if (
         requestError.status === 409 &&
         requestError.message === "Hiker already has a booking for this slot"
       ) {
         setError("You already have a booking for this time slot.");
       } else if (requestError.status === 409) {
-        setError("Sorry, the selected table allocation is no longer available. Please check availability again.");
+        setError(
+          "Sorry, the selected table allocation is no longer available. Please check availability again.",
+        );
       } else {
         setError(requestError.message);
       }
@@ -80,24 +126,14 @@ export default function Booking() {
 
   return (
     <section className="booking-card">
-      <div className="booking-progress" aria-label="Booking progress">
-        <span className="progress-step complete">1. Availability</span>
-        <span className="progress-line" />
-        <span
-          className={`progress-step ${confirmation ? "complete" : "current"}`}
-        >
-          2. Review booking
-        </span>
-        <span className="progress-line" />
-        <span className={`progress-step ${confirmation ? "current" : ""}`}>
-          3. Confirmed
-        </span>
-      </div>
-      <h1>{confirmation ? "Booking confirmed" : "Book a table"}</h1>
+      <BookingProgress step={confirmation ? 3 : 2} />
+      <h1 className="mt-3">
+        {confirmation ? "Booking confirmed" : "Book a table"}
+      </h1>
       <p className="booking-intro">
         {confirmation
           ? confirmation
-          : "Review your selected availability and add any allergy information before confirming."}
+          : "Review your booking selection before confirming."}
       </p>
 
       {!availability?.available && (
@@ -115,18 +151,18 @@ export default function Booking() {
               <dd>{date}</dd>
             </div>
             <div>
-              <dt>Requested time</dt>
+              <dt>Arrival Time</dt>
               <dd>{formatTime(requestedTime)}</dd>
             </div>
             <div>
-              <dt>Party size</dt>
+              <dt>Guests</dt>
               <dd>
                 {numberOfPeople}{" "}
                 {Number(numberOfPeople) === 1 ? "person" : "people"}
               </dd>
             </div>
             <div>
-              <dt>Service slot</dt>
+              <dt>Slot</dt>
               <dd>
                 {formatTime(availability.startTime)}-
                 {getSlotEndTime(
@@ -137,86 +173,110 @@ export default function Booking() {
               </dd>
             </div>
             <div>
-              <dt>Table allocation</dt>
+              <dt>Tables</dt>
               <dd>
                 {availability.tables.map((table) => (
                   <span key={table.id} className="table-allocation">
                     <strong>Table {table.tableNumber}</strong>
                     <span>
-                      · {table.allocatedSeats}{" "}
-                      {table.allocatedSeats === 1 ? "seat" : "seats"}
+                      ({table.allocatedSeats}{" "}
+                      {table.allocatedSeats === 1 ? "seat" : "seats"})
                     </span>
                   </span>
                 ))}
               </dd>
             </div>
-            {confirmation && confirmedAllergyDescription && (
-              <div>
-                <dt>Allergy notes</dt>
-                <dd>{confirmedAllergyDescription}</dd>
-              </div>
-            )}
           </dl>
         </div>
       )}
 
-      {!confirmation && (
-        <form onSubmit={handleSubmit}>
-          <fieldset className="allergy-field">
-            <legend>Allergy information</legend>
-            <label className="checkbox-label" htmlFor="booking-allergies">
-              <input
-                id="booking-allergies"
-                name="allergyFlag"
-                type="checkbox"
-                checked={allergyFlag}
-                onChange={(event) => setAllergyFlag(event.target.checked)}
-              />
-              I have allergies or dietary requirements
-            </label>
-            {allergyFlag && (
-              <div className="field">
-                <label htmlFor="booking-allergy-description">
-                  Allergy notes
-                </label>
-                <textarea
-                  id="booking-allergy-description"
-                  name="allergyDescription"
-                  value={allergyDescription}
-                  onChange={(event) =>
-                    setAllergyDescription(event.target.value)
-                  }
-                  rows="3"
-                  required
-                  placeholder="Please describe the allergy or dietary requirement"
-                />
+      {availability?.available && (
+        <>
+          <section className="party-requirements-section">
+            <div className="requirements-heading">
+              <div>
+                <h2>Party requirements</h2>
+                <p className="mt-3">
+                  {confirmation
+                    ? "Your specified party requirements."
+                    : "Add any allergies or dietary requirements. Mark allergies to alert staff."}
+                </p>
+              </div>
+            </div>
+            <RequirementsList
+              partyRequirements={partyRequirements}
+              onEdit={
+                confirmation
+                  ? undefined
+                  : (index) => {
+                      setEditingRequirementIndex(index);
+                      setShowRequirementsModal(true);
+                    }
+              }
+              onRemove={confirmation ? undefined : removeRequirement}
+            />
+            {!confirmation && (
+              <div className="d-flex justify-content-end">
+                <button
+                  type="button"
+                  className="btn btn-outline-primary mt-3"
+                  onClick={() => {
+                    setEditingRequirementIndex(null);
+                    setShowRequirementsModal(true);
+                  }}
+                >
+                  <span className="bi bi-plus-lg me-2" aria-hidden="true" />
+                  Add
+                </button>
               </div>
             )}
-          </fieldset>
+          </section>
 
-          {error && (
-            <p role="alert" className="form-error">
-              {error}
-            </p>
+          {!confirmation && (
+            <form onSubmit={handleSubmit}>
+              {error && (
+                <p role="alert" className="form-error">
+                  {error}
+                </p>
+              )}
+              <div className="booking-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => navigate("/search")}
+                >
+                  Change availability
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={submitting || !availability?.available}
+                >
+                  {submitting ? "Booking..." : "Confirm booking"}
+                </button>
+              </div>
+            </form>
           )}
-          <div className="booking-actions">
-            <button
-              type="button"
-              className="btn-secondary"
-              onClick={() => navigate("/search")}
-            >
-              Change availability
-            </button>
-            <button
-              type="submit"
-              className="btn-primary"
-              disabled={submitting || !availability?.available}
-            >
-              {submitting ? "Booking..." : "Confirm booking"}
-            </button>
-          </div>
-        </form>
+
+          {confirmation && (
+            <div className="booking-actions booking-actions--confirmation">
+              <button
+                className="btn-primary"
+                onClick={() => navigate("/bookings")}
+              >
+                View your bookings
+              </button>
+            </div>
+          )}
+        </>
       )}
+
+      <RequirementsModal
+        initialRequirement={editingRequirement}
+        onClose={closeRequirementsModal}
+        onSave={saveRequirement}
+        showRequirementsModal={showRequirementsModal}
+      />
 
       {showConfirmationDialog && (
         <>

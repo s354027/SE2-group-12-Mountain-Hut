@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api/client.js";
 import { useAuth } from "../auth/AuthContext.jsx";
+import BookingProgress from "../components/BookingProgress.jsx";
 
 function todayLocal() {
   const now = new Date();
@@ -36,6 +37,16 @@ export default function Search() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const { user } = useAuth();
+  const resultsSectionRef = useRef(null);
+
+  useEffect(() => {
+    if ((result || error) && resultsSectionRef.current) {
+      resultsSectionRef.current.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }
+  }, [result, error]);
 
   async function handleSearch(event) {
     event.preventDefault();
@@ -81,6 +92,8 @@ export default function Search() {
 
   return (
     <div className="field-guide-search">
+      <BookingProgress step={1} />
+
       <section className="field-guide-hero">
         <div className="field-guide-hero-copy">
           <span className="field-guide-kicker">
@@ -187,6 +200,7 @@ export default function Search() {
         </div>
       </section>
 
+      <div ref={resultsSectionRef}>
       {error && (
         <div className="guide-message guide-error" role="alert">
           <strong>We couldn't complete that search.</strong>
@@ -281,6 +295,7 @@ export default function Search() {
           )}
         </section>
       )}
+      </div>
     </div>
   );
 }

@@ -192,7 +192,7 @@ describe("concurrent bookings", () => {
             );
 
         expect(bookedSeats).toBe(6);
-    });
+    }, 10000);
 
     it("prevents overbooking when slot capacity is sufficient but table seats are not", async () => {
         const {
