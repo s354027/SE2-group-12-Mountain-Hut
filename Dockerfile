@@ -13,9 +13,15 @@ RUN npm run build
 
 
 # =========================
-# Stage 2 - Application
+# Stage 2 - Mailpit source
 # =========================
-FROM node:22-trixie-slim
+FROM axllent/mailpit:v1.33.1 AS mailpit
+
+
+# =========================
+# Stage 3 - Final application
+# =========================
+FROM node:22-trixie-slim AS application
 
 WORKDIR /app
 
@@ -24,11 +30,25 @@ RUN npm ci --omit=dev
 
 COPY backend/ ./
 
-# Copy the compiled React application
 COPY --from=frontend-build /frontend/dist ./frontend-dist
+COPY --from=mailpit /mailpit /usr/local/bin/mailpit
 
+COPY docker-entrypoint.sh /usr/local/bin/mountain-hut-entrypoint.sh
+RUN chmod +x /usr/local/bin/mountain-hut-entrypoint.sh
+
+ENV PORT=3000
+ENV HOST=0.0.0.0
+ENV FRONTEND_ORIGIN=http://localhost:3000
+ENV DB_PATH=/app/data/mountain-hut.sqlite
 ENV SERVE_FRONTEND=true
 
-EXPOSE 3000
+ENV SMTP_HOST=127.0.0.1
+ENV SMTP_PORT=1025
 
-CMD ["sh", "-c", "npm run db:migrate && npm start"]
+ENV MP_MAX_MESSAGES=5000
+ENV MP_DATABASE=/app/data/mailpit.db
+
+EXPOSE 3000
+EXPOSE 8025
+
+ENTRYPOINT ["/usr/local/bin/mountain-hut-entrypoint.sh"]
