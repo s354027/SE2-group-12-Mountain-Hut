@@ -52,6 +52,12 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DB_PATH: ${{ github.workspace }}/backend/data/e2e.sqlite
+    services:
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
 
     steps:
       - uses: actions/checkout@v4
@@ -79,13 +85,6 @@ jobs:
       - name: Install Playwright browser
         run: npx playwright install --with-deps chromium
 
-      - name: Prepare database
-        working-directory: backend
-        run: npm run e2e:prepare
-
-      - name: Start Mailpit
-        run: docker compose -f backend/docker-compose.yml up -d mailpit
-
       - name: Run E2E tests
         run: npm run test:e2e
 
@@ -96,7 +95,3 @@ jobs:
           name: playwright-report
           path: playwright-report/
           if-no-files-found: ignore
-
-      - name: Stop Mailpit
-        if: always()
-        run: docker compose -f backend/docker-compose.yml down
