@@ -34,7 +34,8 @@ COPY --from=frontend-build /frontend/dist ./frontend-dist
 COPY --from=mailpit /mailpit /usr/local/bin/mailpit
 
 COPY docker-entrypoint.sh /usr/local/bin/mountain-hut-entrypoint.sh
-RUN chmod +x /usr/local/bin/mountain-hut-entrypoint.sh
+
+RUN sed -i 's/\r$//' /usr/local/bin/mountain-hut-entrypoint.sh && chmod +x /usr/local/bin/mountain-hut-entrypoint.sh
 
 ENV PORT=3000
 ENV HOST=0.0.0.0

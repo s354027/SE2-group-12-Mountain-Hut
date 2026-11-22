@@ -201,6 +201,10 @@ function BookingEditModal({ booking, onClose, onBookingUpdated }) {
       });
       onClose();
     } catch (requestError) {
+      if (requestError.code === "PASSWORD_CHANGE_REQUIRED") {
+        window.location.assign("/change-password");
+        return;
+      }
       setError(formatErrorMessage(requestError.message));
     } finally {
       setSaving(false);
