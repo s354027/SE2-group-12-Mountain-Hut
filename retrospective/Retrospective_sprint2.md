@@ -38,14 +38,14 @@ sections:
 |--------|---------|--------|------------|--------------|
 | _#0_   |    14   |    -   |   34h 30m  |   31h 28m    |
 | _#5_   |    5    |    3   |   11h      |   10h 36m    |
-| _#6_   |    5    |    3   |   14h      |   13h 36m    |
-| _#7_   |    5    |    5   |   13h      |   10h 59m    |
+| _#6_   |    5    |    5   |   14h      |   14h 40m    |
+| _#7_   |    5    |    3   |   13h      |   9h 55m     |
 | _#8_   |    5    |    2   |   9h       |   6h 11m     |
    
 
 > place technical tasks corresponding to story `#0` and leave out story points (not applicable in this case)
 
-- Hours per task  <span style="color:red">per person</span>  (average, standard deviation): 1h 39m average, 28m standard deviation (using Estimation per Person)
+- Hours per task  <span style="color:red">per person</span>  (average, standard deviation): 1h 24m average, 33m standard deviation (using Estimation per Person)
 - Total task estimation error ratio: sum of total hours estimation / sum of total hours spent -1: 81h 30m / 72h 50m - 1 = +0,119 = +11.9% 
   
 ## QUALITY MEASURES 
