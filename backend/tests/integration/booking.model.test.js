@@ -47,7 +47,7 @@ describe('Booking model validation', () => {
       allergyDescription: 'Peanut allergy'
     });
 
-    await booking.validate();
+    await expect(booking.validate()).resolves.toBeDefined();
   });
 
   it('accepts no allergy flag regardless of description', async () => {
@@ -57,6 +57,6 @@ describe('Booking model validation', () => {
       allergyDescription: null
     });
 
-    await booking.validate();
+    await expect(booking.validate()).resolves.toBeDefined();
   });
 });
