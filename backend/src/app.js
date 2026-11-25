@@ -23,6 +23,14 @@ app.use(cors({
 // Parse incoming JSON requests
 app.use(express.json());
 
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const frontendDist = path.resolve(currentDir, '../frontend-dist');
+
+// Registers express.static before session middlewares
+if (process.env.SERVE_FRONTEND === 'true') {
+    app.use(express.static(frontendDist));
+}
+
 // Session used for authentication (login/logout, role checks)
 app.use(session({
     secret: process.env.SESSION_SECRET || 'dev-secret-change-me',
@@ -52,11 +60,6 @@ app.use('/api/slots', createSlotRouter(models));
 app.use('/api/tables', createTableRouter(models));
 
 if (process.env.SERVE_FRONTEND === 'true') {
-    const currentDir = path.dirname(fileURLToPath(import.meta.url));
-    const frontendDist = path.resolve(currentDir, '../frontend-dist');
-
-    app.use(express.static(frontendDist));
-
     // React Router fallback:
     // requests such as /bookings or /search must return index.html
     app.use((req, res, next) => {
