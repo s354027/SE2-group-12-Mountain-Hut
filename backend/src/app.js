@@ -26,7 +26,6 @@ app.use(express.json());
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const frontendDist = path.resolve(currentDir, '../frontend-dist');
 
-// Registers express.static before session middlewares
 if (process.env.SERVE_FRONTEND === 'true') {
     app.use(express.static(frontendDist));
 }
