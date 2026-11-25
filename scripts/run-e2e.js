@@ -80,7 +80,7 @@ async function main() {
       try {
         await execFileAsync("docker", ["stop", containerId]);
       } catch (error) {
-        throw new Error(`Could not stop the Mailpit container: ${error.message}`);
+        console.error(`Could not stop the Mailpit container: ${error.message}`);
       }
     }
   }
