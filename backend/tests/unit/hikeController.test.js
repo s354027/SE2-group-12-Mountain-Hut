@@ -156,6 +156,24 @@ describe("Hike Controller", () => {
       expect(res.status).toHaveBeenCalledWith(201);
     });
 
+    it("normalizes a whitespace-only route to null", async () => {
+      create.mockResolvedValue({ id: 1 });
+      const req = mockReq({
+        body: {
+          destination: "Rifugio Gastaldi",
+          route: "   ",
+          departureTime: futureDate(2),
+          expectedReturnTime: futureDate(5),
+        },
+      });
+      const res = mockRes();
+
+      await createHike(req, res);
+
+      expect(create).toHaveBeenCalledWith(expect.objectContaining({ route: null }));
+      expect(res.status).toHaveBeenCalledWith(201);
+    });
+
     it("trims route and each waypoint before persisting them", async () => {
       create.mockResolvedValue({ id: 1 });
       const req = mockReq({
@@ -274,6 +292,25 @@ describe("Hike Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: "Failed to register hike" });
+    });
+
+    it("returns 400 when the model rejects the data with a validation error", async () => {
+      const validationError = new Error("validation failed");
+      validationError.name = "SequelizeValidationError";
+      create.mockRejectedValue(validationError);
+      const req = mockReq({
+        body: {
+          destination: "Rifugio Gastaldi",
+          departureTime: futureDate(2),
+          expectedReturnTime: futureDate(5),
+        },
+      });
+      const res = mockRes();
+
+      await createHike(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Invalid hike data" });
     });
   });
 

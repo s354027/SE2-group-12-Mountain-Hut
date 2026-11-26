@@ -49,6 +49,9 @@ export function createHikeController({ Hike, User }) {
       return res.status(400).json({ error: 'Invalid route' });
     }
 
+    // A whitespace-only route carries no information, same as omitting it.
+    const normalizedRoute = typeof route === 'string' && !route.trim() ? null : route;
+
     if (!Array.isArray(waypoints) || waypoints.some(point => typeof point !== 'string' || !point.trim())) {
       return res.status(400).json({ error: 'waypoints must be an array of non-empty strings' });
     }
@@ -56,11 +59,11 @@ export function createHikeController({ Hike, User }) {
     const departure = new Date(departureTime);
     const expectedReturn = new Date(expectedReturnTime);
 
-    if (!departureTime || Number.isNaN(departure.getTime())) {
+    if (Number.isNaN(departure.getTime())) {
       return res.status(400).json({ error: 'departureTime must be a valid date' });
     }
 
-    if (!expectedReturnTime || Number.isNaN(expectedReturn.getTime())) {
+    if (Number.isNaN(expectedReturn.getTime())) {
       return res.status(400).json({ error: 'expectedReturnTime must be a valid date' });
     }
 
@@ -76,7 +79,7 @@ export function createHikeController({ Hike, User }) {
       const hike = await Hike.create({
         hikerId: req.session.user.id,
         destination: destination.trim(),
-        route: route === null ? null : route.trim(),
+        route: normalizedRoute === null ? null : normalizedRoute.trim(),
         waypoints: waypoints.map(point => point.trim()),
         departureTime: departure,
         expectedReturnTime: expectedReturn
@@ -84,6 +87,10 @@ export function createHikeController({ Hike, User }) {
 
       return res.status(201).json(hike);
     } catch (err) {
+      if (err.name === 'SequelizeValidationError') {
+        return res.status(400).json({ error: 'Invalid hike data' });
+      }
+
       console.error('Error creating hike:', err);
       return res.status(500).json({ error: 'Failed to register hike' });
     }
