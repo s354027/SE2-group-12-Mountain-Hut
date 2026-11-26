@@ -7,6 +7,7 @@ import { defineBookingTable } from './BookingTable.js';
 import { defineSlotTable } from './SlotTable.js';
 import { defineMenu } from './Menu.js';
 import { definePasswordResetToken } from './PasswordResetToken.js';
+import { defineHike } from './Hike.js';
 
 export function initModels(sequelize) {
     const User = defineUser(sequelize);
@@ -17,6 +18,7 @@ export function initModels(sequelize) {
     const SlotTable = defineSlotTable(sequelize);
     const Menu = defineMenu(sequelize);
     const PasswordResetToken = definePasswordResetToken(sequelize);
+    const Hike = defineHike(sequelize);
 
     // Hiker 1:N Booking
     User.hasMany(Booking, {
@@ -104,6 +106,17 @@ export function initModels(sequelize) {
         as: 'user'
     });
 
+    // Hiker 1:N Hike (MH-105)
+    User.hasMany(Hike, {
+        foreignKey: 'hikerId',
+        as: 'hikes'
+    });
+
+    Hike.belongsTo(User, {
+        foreignKey: 'hikerId',
+        as: 'hiker'
+    });
+
     return {
         User,
         Slot,
@@ -112,6 +125,7 @@ export function initModels(sequelize) {
         BookingTable,
         SlotTable,
         Menu,
-        PasswordResetToken
+        PasswordResetToken,
+        Hike
     };
 }
