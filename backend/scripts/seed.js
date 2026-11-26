@@ -66,7 +66,8 @@ async function seed() {
    * Adds demo users, tables, and slots for the next seven days to the database.
    */
   await sequelize.transaction(async transaction => {
-    const { User, DiningTable, Slot } = models;
+    const { User, DiningTable, Slot, Hike } = models;
+    const usersByEmail = {};
 
     for (const definition of userDefinitions) {
       const { password, ...userData } = definition;
@@ -85,6 +86,8 @@ async function seed() {
           role: userData.role
         }, { transaction });
       }
+
+      usersByEmail[userData.email] = user;
     }
 
     const tables = [];
@@ -117,6 +120,49 @@ async function seed() {
         });
 
         await slot.addTables(tables, { transaction });
+      }
+    }
+
+    const demoHiker = usersByEmail['hiker.demo@mountainhut.local'];
+    const now = new Date();
+
+    const hikeDefinitions = [
+      {
+        hikerId: demoHiker.id,
+        destination: 'Rifugio Vittorio Sella',
+        route: 'Ceresole Reale - Lago Serrù - Rifugio Vittorio Sella',
+        waypoints: ['Lago Serrù', 'Colle del Nivolet'],
+        departureTime: new Date(now.getTime() - 2 * 60 * 60 * 1000),
+        expectedReturnTime: new Date(now.getTime() + 3 * 60 * 60 * 1000),
+        status: 'ONGOING'
+      },
+      {
+        hikerId: demoHiker.id,
+        destination: 'Rifugio Gastaldi',
+        route: 'Pian della Mussa - Lago delle Rocce - Rifugio Gastaldi',
+        waypoints: ['Lago delle Rocce'],
+        departureTime: new Date(now.getTime() - 1 * 60 * 60 * 1000),
+        expectedReturnTime: new Date(now.getTime() + 5 * 60 * 60 * 1000),
+        status: 'ONGOING'
+      }
+    ];
+
+    for (const definition of hikeDefinitions) {
+      const [hike, created] = await Hike.findOrCreate({
+        where: {
+          hikerId: definition.hikerId,
+          destination: definition.destination
+        },
+        defaults: definition,
+        transaction
+      });
+
+      if (!created) {
+        await hike.update({
+          departureTime: definition.departureTime,
+          expectedReturnTime: definition.expectedReturnTime,
+          status: definition.status
+        }, { transaction });
       }
     }
   });
