@@ -145,7 +145,7 @@ export async function copyWeekSchedule({ sourceWeekStart, targetWeekStarts } = {
   validateInput({ sourceWeekStart, targetWeekStarts });
 
   const { Slot, DiningTable, SlotTable, Booking, Menu } = models;
-  const orderedTargets = [...targetWeekStarts].sort();
+  const orderedTargets = [...targetWeekStarts].sort((a, b) => a.localeCompare(b));
 
   return runScheduleTransaction(async (transaction) => {
     const sourceRange = getWeekRange(sourceWeekStart);
