@@ -8,6 +8,7 @@ import { createSlotRouter } from './routes/slot.routes.js';
 import { createTableRouter } from './routes/table.routes.js';
 import { models, sequelize } from './db/index.js';
 import { createHikerRouter } from './routes/hiker.routes.js';
+import { createHikeRouter } from './routes/hike.routes.js';
 import bookingRouter from './routes/booking.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -55,6 +56,7 @@ app.use('/api/admin', createAdminRouter(models));
 app.use('/api/availability', availabilityRouter);
 app.use('/api/bookings', bookingRouter);
 app.use('/api/hikers', createHikerRouter({ User: models.User, sequelize }));
+app.use('/api/hikes', createHikeRouter({ Hike: models.Hike, User: models.User }));
 app.use('/api/slots', createSlotRouter(models));
 app.use('/api/tables', createTableRouter(models));
 
