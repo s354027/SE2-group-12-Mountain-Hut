@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { requireRole } from '../middleware/requireRole.js';
 import { createSlotController } from '../controllers/slotController.js';
+import { copyWeek } from '../controllers/scheduleController.js';
 
 export function createSlotRouter({ Slot, DiningTable, Booking }) {
   const router = Router();
@@ -17,6 +18,7 @@ export function createSlotRouter({ Slot, DiningTable, Booking }) {
   router.put('/:id', updateSlot);
   router.delete('/:id', deleteSlot);
   router.post('/:id/copy-tables', copyTablesFromSlot);
+  router.post('/copy-week', requireRole('EMPLOYEE'), copyWeek);
 
   return router;
 }
