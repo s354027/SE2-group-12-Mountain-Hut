@@ -14,6 +14,7 @@ import BookingsPage from "./pages/hiker/BookingsPage.jsx";
 import ChangePassword from "./pages/ChangePassword.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
 import ResetPassword from "./pages/ResetPassword.jsx";
+import ActiveHikes from "./pages/staff/ActiveHikes.jsx";
 
 // One route per page. Each person fills in "their" page (see README).
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
         <Route element={<ProtectedRoute roles={["EMPLOYEE", "WARDEN"]} />}>
           <Route path="/staff/slots" element={<StaffSlots />} />
           <Route path="/staff/bookings/new" element={<StaffBooking />} />
+          <Route path="/staff/hikes/active" element={<ActiveHikes />} />
         </Route>
 
         {/* warden only */}
