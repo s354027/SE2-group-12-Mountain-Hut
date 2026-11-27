@@ -72,6 +72,8 @@ const roleHomeContent = {
     title: 'Manage hut operations',
     description:
       'Keep slots, tables and bookings up to date, and monitor hikers’ expected return times.',
+    primaryTo: '/staff/slots',
+    primaryLabel: 'Manage slots',
     cards: [
       {
         number: '01',
@@ -99,6 +101,8 @@ const roleHomeContent = {
     title: 'Monitor hut operations',
     description:
       'Oversee hut operations and staff, and monitor hikers’ expected return times.',
+    primaryTo: '/staff/slots',
+    primaryLabel: 'Manage slots',
     cards: [
       {
         number: '01',
@@ -108,7 +112,7 @@ const roleHomeContent = {
       },
       {
         number: '02',
-        title: 'Staff',
+        title: 'Add new staff',
         description: 'Create accounts for new employees from the admin page.',
         to: '/admin/staff/new',
       },
