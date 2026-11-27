@@ -1,0 +1,342 @@
+.active-hikes-page {
+  --hike-on-track-background: #e5f3e8;
+  --hike-on-track-foreground: #165b37;
+  --hike-due-soon-background: #fff1cc;
+  --hike-due-soon-foreground: #6b4600;
+  --hike-overdue-background: #fde5e5;
+  --hike-overdue-foreground: #8f1d1d;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 48px) 24px;
+}
+
+.active-hikes-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.active-hikes-eyebrow,
+.active-hike-label {
+  color: var(--alpine-clay);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.active-hikes-heading h1 {
+  margin: 8px 0;
+  color: var(--alpine-deep);
+}
+
+.active-hikes-heading p {
+  margin: 0;
+  color: var(--alpine-muted);
+}
+
+.active-hikes-count {
+  flex: 0 0 auto;
+  padding: 8px 14px;
+  border: 1px solid var(--alpine-line);
+  border-radius: 999px;
+  color: var(--alpine-deep);
+  font-weight: 700;
+}
+
+.active-hikes-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px 20px;
+  margin-bottom: 20px;
+}
+
+.active-hike-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.active-hike-filter {
+  min-height: 38px;
+  padding: 8px 14px;
+  border: none;
+  border-radius: 999px;
+  background: #fffefa;
+  color: var(--alpine-muted);
+  font: inherit;
+  font-size: 0.84rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.active-hike-filter:hover:not([aria-pressed="true"]) {
+  border-color: #aeb8af;
+  background: #f7f6f1;
+  color: var(--alpine-deep);
+}
+
+.active-hike-filter[aria-pressed="true"] {
+  border-color: var(--alpine-deep);
+  background: #e8eee8;
+  color: var(--alpine-deep);
+}
+
+.active-hike-filter--on-track[aria-pressed="true"] {
+  border-color: var(--hike-on-track-foreground);
+  background: var(--hike-on-track-background);
+  color: var(--hike-on-track-foreground);
+}
+
+.active-hike-filter--overdue[aria-pressed="true"] {
+  border-color: var(--hike-overdue-foreground);
+  background: var(--hike-overdue-background);
+  color: var(--hike-overdue-foreground);
+}
+
+.active-hike-filter:focus-visible,
+.active-hikes-show-all:focus-visible {
+  outline: 3px solid var(--alpine-clay);
+  outline-offset: 3px;
+}
+
+.active-hikes-sort-note {
+  margin: 0;
+  color: var(--alpine-muted);
+  font-size: 0.84rem;
+}
+
+.active-hikes-message {
+  padding: 20px 24px;
+  border: 1px solid var(--alpine-line);
+  border-radius: 14px;
+  background: #fffefa;
+  color: var(--alpine-muted);
+}
+
+.active-hikes-error {
+  border-color: #b94a48;
+  color: #8d2927;
+}
+
+.active-hikes-filter-empty p {
+  margin: 0 0 12px;
+}
+
+.active-hikes-show-all {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--alpine-deep);
+  font: inherit;
+  font-weight: 700;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.active-hikes-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+  gap: 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.active-hike-pagination {
+  margin-top: 20px;
+}
+
+.active-hike-pagination .page-link {
+  border-color: var(--alpine-line);
+  background-color: #fffefa;
+  color: var(--alpine-deep);
+}
+
+.active-hike-pagination .page-link:hover {
+  border-color: var(--alpine-deep);
+  background-color: #e8eee8;
+  color: var(--alpine-deep);
+}
+
+.active-hike-pagination .page-link:focus {
+  box-shadow: 0 0 0 0.25rem rgba(24, 56, 45, 0.25);
+}
+
+.active-hike-pagination .page-item.active .page-link {
+  border-color: var(--alpine-deep);
+  background-color: var(--alpine-deep);
+  color: #fffefa;
+}
+
+.active-hike-pagination .page-item.disabled .page-link {
+  border-color: var(--alpine-line);
+  background-color: #f3f2ed;
+  color: var(--alpine-muted);
+}
+
+.active-hike-card {
+  height: 100%;
+  padding: 22px 24px;
+  border: 1px solid var(--alpine-line);
+  border-radius: 14px;
+  background: #fffefa;
+}
+
+.active-hike-identity-label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.active-hike-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--alpine-line);
+}
+
+.active-hike-card-heading h2 {
+  margin: 6px 0 0;
+  color: var(--alpine-deep);
+  font: 500 1.4rem Georgia, serif;
+}
+
+.active-hike-return {
+  display: grid;
+  gap: 4px;
+  text-align: right;
+}
+
+.active-hike-return > span:not(.active-hike-status),
+.active-hike-details dt,
+.active-hike-route h3,
+.active-hike-waypoints h3 {
+  color: var(--alpine-muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.active-hike-return time {
+  color: var(--alpine-deep);
+  font-weight: 700;
+}
+
+.active-hike-status {
+  width: fit-content;
+  justify-self: end;
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.active-hike-status--on-track {
+  background: var(--hike-on-track-background);
+  color: var(--hike-on-track-foreground);
+}
+
+.active-hike-status--due-soon {
+  background: var(--hike-due-soon-background);
+  color: var(--hike-due-soon-foreground);
+}
+
+.active-hike-status--overdue {
+  background: var(--hike-overdue-background);
+  color: var(--hike-overdue-foreground);
+}
+
+.active-hike-status--unknown {
+  background: #e8e9e5;
+  color: #303a34;
+}
+
+.active-hike-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+.active-hike-details dt {
+  margin-bottom: 4px;
+}
+
+.active-hike-details dd {
+  margin: 0;
+  color: var(--alpine-deep);
+}
+
+.active-hike-route,
+.active-hike-waypoints {
+  padding-top: 10px;
+}
+
+.active-hike-route h3,
+.active-hike-waypoints h3 {
+  margin: 0 0 5px;
+}
+
+.active-hike-route p,
+.active-hike-waypoints p {
+  margin: 0;
+  color: var(--alpine-deep);
+}
+
+.active-hike-waypoints {
+  margin-top: 10px;
+}
+
+.active-hike-waypoints ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.active-hike-waypoints li {
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #f0eee6;
+  color: #10271f;
+  font-size: 0.88rem;
+}
+
+@media (max-width: 560px) {
+  .active-hikes-page {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .active-hikes-heading,
+  .active-hikes-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .active-hike-card-heading {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .active-hikes-toolbar {
+    align-items: stretch;
+  }
+
+  .active-hike-card {
+    padding: 18px;
+  }
+
+}
