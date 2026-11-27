@@ -16,3 +16,9 @@ backend/data
 npm-debug.log*
 
 data/
+
+retrospective/
+
+docs/
+
+diagrams/
