@@ -6,7 +6,7 @@ import { createHikeController } from '../controllers/hikeController.js';
 
 export function createHikeRouter({ Hike, User }) {
   const router = Router();
-  const { getActiveHikes, createHike, getMyHikes } = createHikeController({ Hike, User });
+  const { getActiveHikes, createHike, getMyHikes, closeHike } = createHikeController({ Hike, User });
 
   // Every hike route requires a logged-in user; the role checks below
   // narrow down which role can reach each one.
@@ -29,6 +29,13 @@ export function createHikeRouter({ Hike, User }) {
    * Register a new hike for the authenticated hiker (MH-107).
    */
   router.post('/', requireRole('HIKER'), requirePasswordChanged, createHike);
+
+  /**
+   * PATCH /api/hikes/:id/close
+   * Mark one of the authenticated hiker's own hikes as safely completed
+   * (MH-108/MH-22).
+   */
+  router.patch('/:id/close', requireRole('HIKER'), requirePasswordChanged, closeHike);
 
   return router;
 }
