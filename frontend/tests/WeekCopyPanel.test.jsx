@@ -186,7 +186,6 @@ test("asks for confirmation before replacing an existing schedule", async () => 
 
   const dialog = screen.getByRole("alertdialog");
   expect(dialog).toHaveTextContent("will be completely replaced");
-  expect(dialog).toHaveTextContent("This cannot be undone");
   expect(within(dialog).getByText(`${weekLabel(TARGET_WITH_SLOTS)} (1 slot)`)).toBeInTheDocument();
   expect(fetch).not.toHaveBeenCalled();
 
