@@ -13,6 +13,7 @@ import bookingRouter from './routes/booking.routes.js';
 import menuRouter from './routes/menu.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import publicRouter from './routes/public.routes.js';
 
 const app = express();
 
@@ -62,6 +63,7 @@ app.use('/api/hikes', createHikeRouter({ Hike: models.Hike, User: models.User })
 app.use('/api/slots', createSlotRouter(models));
 app.use('/api/tables', createTableRouter(models));
 app.use('/api/menus', menuRouter);
+app.use('/api/public', publicRouter);
 
 if (process.env.SERVE_FRONTEND === 'true') {
     // React Router fallback:
