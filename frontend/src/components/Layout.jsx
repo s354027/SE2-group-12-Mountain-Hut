@@ -22,6 +22,7 @@ export default function Layout() {
           {isStaff && <NavLink to="/staff/slots">Manage slots</NavLink>}
           {isEmployee && <NavLink to="/staff/bookings/new">Staff booking</NavLink>}
           {isWarden && <NavLink to="/admin/staff/new">New staff</NavLink>}
+          {isStaff && <NavLink to="/staff/hikes/active">Active hikes</NavLink>}
         </nav>
         <div className="nav-actions">
           {user ? (

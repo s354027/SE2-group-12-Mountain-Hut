@@ -69,54 +69,54 @@ const roleHomeContent = {
   },
   EMPLOYEE: {
     eyebrow: 'STAFF AREA',
-    title: 'Manage today’s slots and tables',
+    title: 'Manage hut operations',
     description:
-      'Keep slots, tables and bookings up to date for the hut’s service.',
-    primaryTo: '/staff/slots',
-    primaryLabel: 'Manage slots',
+      'Keep slots, tables and bookings up to date, and monitor hikers’ expected return times.',
     cards: [
       {
         number: '01',
         title: 'Slots',
-        description: 'Open, close and review the lunch and dinner slots.',
+        description: 'Manage meal slots and keep table availability up to date.',
+        to: '/staff/slots',
       },
       {
         number: '02',
-        title: 'Tables',
-        description: 'Manage the dining tables available for each slot.',
-      },
-      {
-        number: '03',
         title: 'Bookings',
         description:
           'Keep track of party sizes and dietary requirements for each slot.',
+        to: '/staff/bookings/new',
+      },
+      {
+        number: '03',
+        title: 'Active hikes',
+        description: 'Review active hikes, including their planned return times.',
+        to: '/staff/hikes/active',
       },
     ],
   },
   WARDEN: {
     eyebrow: 'WARDEN AREA',
-    title: 'Run the hut, from slots to staff',
+    title: 'Monitor hut operations',
     description:
-      'Manage meal slots and tables, and bring new staff members on board.',
-    primaryTo: '/staff/slots',
-    primaryLabel: 'Manage slots',
-    secondaryTo: '/admin/staff/new',
-    secondaryLabel: 'Add new staff',
+      'Oversee hut operations and staff, and monitor hikers’ expected return times.',
     cards: [
       {
         number: '01',
-        title: 'Slots & tables',
+        title: 'Slots',
         description: 'Open, close and review meal slots and seating.',
+        to: '/staff/slots',
       },
       {
         number: '02',
-        title: 'New staff',
+        title: 'Staff',
         description: 'Create accounts for new employees from the admin page.',
+        to: '/admin/staff/new',
       },
       {
         number: '03',
-        title: 'Oversight',
-        description: 'Keep the hut’s daily operations running smoothly.',
+        title: 'Active hikes',
+        description: 'Review active hikes, including their planned return times.',
+        to: '/staff/hikes/active',
       },
     ],
   },
@@ -134,27 +134,39 @@ function SignedInHome({ role }) {
 
         <p>{content.description}</p>
 
-        <div className="home-intro-actions">
-          <Link className="home-primary-link" to={content.primaryTo}>
-            {content.primaryLabel} <span aria-hidden="true">↗</span>
-          </Link>
-
-          {content.secondaryTo && (
-            <Link className="home-secondary-link" to={content.secondaryTo}>
-              {content.secondaryLabel} <span aria-hidden="true">↗</span>
+        {content.primaryTo && (
+          <div className="home-intro-actions">
+            <Link className="home-primary-link" to={content.primaryTo}>
+              {content.primaryLabel} <span aria-hidden="true">↗</span>
             </Link>
-          )}
-        </div>
+
+            {content.secondaryTo && (
+              <Link className="home-secondary-link" to={content.secondaryTo}>
+                {content.secondaryLabel} <span aria-hidden="true">↗</span>
+              </Link>
+            )}
+          </div>
+        )}
       </section>
 
       <div className="home-simple-info">
-        {content.cards.map((card) => (
-          <article key={card.number}>
-            <span className="home-info-number">{card.number}</span>
-            <h2>{card.title}</h2>
-            <p>{card.description}</p>
-          </article>
-        ))}
+        {content.cards.map((card) => {
+          const cardContent = (
+            <>
+              <span className="home-info-number">{card.number}</span>
+              <h2>{card.title}</h2>
+              <p>{card.description}</p>
+            </>
+          );
+
+          return card.to ? (
+            <Link className="home-info-card" key={card.number} to={card.to}>
+              {cardContent}
+            </Link>
+          ) : (
+            <article key={card.number}>{cardContent}</article>
+          );
+        })}
       </div>
     </div>
   );
