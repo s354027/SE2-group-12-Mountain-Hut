@@ -2044,11 +2044,26 @@ button:active:not(:disabled) {
   max-width: 920px;
   margin: 24px auto 45px;
 }
-.home-simple-info article {
+.home-simple-info > article,
+.home-simple-info > .home-info-card {
+  display: block;
   padding: 22px 24px;
   background: #fffefa;
   border: 1px solid var(--alpine-line);
   border-radius: 14px;
+}
+.home-simple-info > .home-info-card {
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+.home-simple-info > .home-info-card:hover {
+  border-color: var(--alpine-clay);
+  transform: translateY(-2px);
+}
+.home-simple-info > .home-info-card:focus-visible {
+  outline: 3px solid var(--alpine-clay);
+  outline-offset: 3px;
 }
 .home-info-number {
   color: var(--alpine-clay);
