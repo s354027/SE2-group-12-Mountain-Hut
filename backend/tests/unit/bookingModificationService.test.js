@@ -16,7 +16,7 @@ vi.mock('../../src/db/index.js', () => ({
 vi.mock('../../src/services/tableAvailability.js', () => ({ findFreeTables: mocks.findFreeTables }));
 vi.mock('../../src/services/partySplit.js', () => ({ splitParty: mocks.splitParty }));
 
-import { modifyBookingForHiker, BookingError } from '../../src/services/bookingService.js';
+import { modifyBookingForHiker } from '../../src/services/bookingService.js';
 
 const input = { bookingId: 12, hikerId: 7 };
 let booking;

@@ -75,15 +75,17 @@ export function initModels(sequelize) {
     // Slot 1:N Menu
     Slot.hasMany(Menu, {
         foreignKey: 'slotId',
-        as: 'menus'
+        as: 'menus',
+        onDelete: 'CASCADE' // deletion of a slot will cascade to menus
     });
 
     Menu.belongsTo(Slot, {
         foreignKey: 'slotId',
-        as: 'slot'
+        as: 'slot',
+        onDelete: 'CASCADE' // deletion of a slot will cascade to menus
     });
 
-    // Employee 1:N Menu
+    // Staff 1:N Menu
     User.hasMany(Menu, {
         foreignKey: 'managerId',
         as: 'managedMenus'
