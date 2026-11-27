@@ -2,13 +2,16 @@
  * MH-94 (MH-09 Repeat a weekly schedule): copy service.
  *
  * In a single transaction, copies a week's slots (with their tables and
- * capacity) to one or more target weeks. A target week that has bookings is
- * rejected; otherwise its existing schedule is fully replaced.
+ * capacity) to one or more target weeks. A target week that has active
+ * bookings (PENDING / CONFIRMED) is rejected; otherwise its existing schedule
+ * is fully replaced. Old slots still referenced by cancelled bookings are
+ * archived instead of deleted, so the cancelled bookings stay in the database.
  *
  * Weeks are identified by their first day, which must be a Monday (YYYY-MM-DD).
  */
 import { Op, Transaction } from 'sequelize';
 import { sequelize, models } from '../db/index.js';
+import { ACTIVE_BOOKING_STATUSES, ARCHIVED_STATUS } from './slotStatus.js';
 
 export class ScheduleCopyError extends Error {
   constructor(status, message) {
@@ -150,7 +153,10 @@ export async function copyWeekSchedule({ sourceWeekStart, targetWeekStarts } = {
   return runScheduleTransaction(async (transaction) => {
     const sourceRange = getWeekRange(sourceWeekStart);
     const sourceSlots = await Slot.findAll({
-      where: { date: { [Op.between]: [sourceRange.start, sourceRange.end] } },
+      where: {
+        date: { [Op.between]: [sourceRange.start, sourceRange.end] },
+        status: { [Op.ne]: ARCHIVED_STATUS }
+      },
       include: [{
         model: DiningTable,
         as: 'tables',
@@ -170,21 +176,27 @@ export async function copyWeekSchedule({ sourceWeekStart, targetWeekStarts } = {
     for (const weekStart of orderedTargets) {
       const range = getWeekRange(weekStart);
       const existingSlots = await Slot.findAll({
-        where: { date: { [Op.between]: [range.start, range.end] } },
+        where: {
+          date: { [Op.between]: [range.start, range.end] },
+          status: { [Op.ne]: ARCHIVED_STATUS }
+        },
         attributes: ['id'],
         transaction
       });
       const existingIds = existingSlots.map((s) => s.id);
 
       if (existingIds.length > 0) {
-        const bookingCount = await Booking.count({
-          where: { slotId: { [Op.in]: existingIds } },
+        const activeBookings = await Booking.count({
+          where: {
+            slotId: { [Op.in]: existingIds },
+            status: { [Op.in]: ACTIVE_BOOKING_STATUSES }
+          },
           transaction
         });
-        if (bookingCount > 0) {
+        if (activeBookings > 0) {
           throw new ScheduleCopyError(
             409,
-            `Target week starting ${weekStart} has bookings and cannot be replaced`
+            `Target week starting ${weekStart} has active bookings and cannot be replaced`
           );
         }
       }
@@ -199,7 +211,26 @@ export async function copyWeekSchedule({ sourceWeekStart, targetWeekStarts } = {
         const where = { slotId: { [Op.in]: existingIds } };
         await Menu.destroy({ where, transaction });
         await SlotTable.destroy({ where, transaction });
-        await Slot.destroy({ where: { id: { [Op.in]: existingIds } }, transaction });
+
+        // Only cancelled bookings can be left here (active ones were rejected above).
+        // Their slots cannot be deleted (bookings FK is RESTRICT): archive them instead.
+        const cancelledBookings = await Booking.findAll({
+          where,
+          attributes: ['slotId'],
+          transaction
+        });
+        const archivedIds = [...new Set(cancelledBookings.map((b) => b.slotId))];
+        const deletedIds = existingIds.filter((id) => !archivedIds.includes(id));
+
+        if (archivedIds.length > 0) {
+          await Slot.update(
+            { status: ARCHIVED_STATUS },
+            { where: { id: { [Op.in]: archivedIds } }, transaction }
+          );
+        }
+        if (deletedIds.length > 0) {
+          await Slot.destroy({ where: { id: { [Op.in]: deletedIds } }, transaction });
+        }
       }
 
       const offsetDays = daysBetween(sourceWeekStart, weekStart);
