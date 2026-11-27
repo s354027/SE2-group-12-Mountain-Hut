@@ -11,7 +11,7 @@ export function defineMenu(sequelize) {
 
         price: {
             type: DataTypes.DECIMAL(10, 2),
-            allowNull: false,
+            allowNull: true,
             validate: {
                 min: 0
             }

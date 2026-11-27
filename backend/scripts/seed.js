@@ -66,7 +66,7 @@ async function seed() {
    * Adds demo users, tables, and slots for the next seven days to the database.
    */
   await sequelize.transaction(async transaction => {
-    const { User, DiningTable, Slot, Hike } = models;
+    const { User, DiningTable, Slot, Menu, Hike } = models;
     const usersByEmail = {};
 
     for (const definition of userDefinitions) {
@@ -102,6 +102,7 @@ async function seed() {
     }
 
     const totalCapacity = tables.reduce((sum, table) => sum + table.seats, 0);
+    const demoWarden = usersByEmail['warden.demo@mountainhut.local'];
 
     for (const date of getSeedDates(7)) {
       for (const definition of slotDefinitions) {
@@ -115,6 +116,22 @@ async function seed() {
             duration: 120,
             totalCapacity,
             status: 'OPEN'
+          },
+          transaction
+        });
+        
+        await Menu.findOrCreate({
+          where: {
+              slotId: slot.id
+          },
+          defaults: {
+              description:
+                  definition.meal === 'LUNCH'
+                      ? 'Pasta, main course and dessert'
+                      : 'Soup, main course and dessert',
+              price:
+                  definition.meal === 'LUNCH' ? 18 : null, // price can be undefined/nullable
+              managerId: demoWarden.id
           },
           transaction
         });
