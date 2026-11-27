@@ -117,13 +117,13 @@ export default function WeekCopyPanel({ slots, onCopied }) {
     updateTargets(targetWeeks.includes(week) ? targetWeeks.filter((w) => w !== week) : [...targetWeeks, week]);
   }
 
-  function requestCopy() {
+  async function requestCopy() {
     resetFeedback();
     if (weeksToReplace.length > 0) {
       setConfirming(true);
       return;
     }
-    copy();
+    await copy();
   }
 
   async function copy() {
