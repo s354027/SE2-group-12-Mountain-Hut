@@ -60,7 +60,7 @@ test('employee sees a slot-management homepage', async () => {
 
   await screen.findByRole('heading', { name: 'Manage hut operations' });
   const main = screen.getByRole('main');
-  expect(within(main).getByRole('link', { name: /manage slots/i })).toHaveAttribute(
+  expect(within(main).getByRole('link', { name: /slots/i })).toHaveAttribute(
     'href',
     '/staff/slots',
   );
@@ -72,7 +72,7 @@ test('warden sees the warden homepage, linking to slot management', async () => 
 
   await screen.findByRole('heading', { name: 'Monitor hut operations' });
   const main = screen.getByRole('main');
-  expect(within(main).getByRole('link', { name: /manage slots/i })).toHaveAttribute(
+  expect(within(main).getByRole('link', { name: /slots/i })).toHaveAttribute(
     'href',
     '/staff/slots',
   );
