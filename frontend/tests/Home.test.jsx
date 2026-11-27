@@ -58,9 +58,9 @@ test('employee sees a slot-management homepage', async () => {
   stubSession({ id: 2, role: 'EMPLOYEE' });
   renderHome();
 
-  await screen.findByRole('heading', { name: 'Manage today’s slots and tables' });
+  await screen.findByRole('heading', { name: 'Manage hut operations' });
   const main = screen.getByRole('main');
-  expect(within(main).getByRole('link', { name: /manage slots/i })).toHaveAttribute(
+  expect(within(main).getByRole('link', { name: /slots/i })).toHaveAttribute(
     'href',
     '/staff/slots',
   );
@@ -70,13 +70,13 @@ test('warden sees the warden homepage, linking to slot management', async () => 
   stubSession({ id: 3, role: 'WARDEN' });
   renderHome();
 
-  await screen.findByRole('heading', { name: 'Run the hut, from slots to staff' });
+  await screen.findByRole('heading', { name: 'Monitor hut operations' });
   const main = screen.getByRole('main');
-  expect(within(main).getByRole('link', { name: /manage slots/i })).toHaveAttribute(
+  expect(within(main).getByRole('link', { name: /slots/i })).toHaveAttribute(
     'href',
     '/staff/slots',
   );
-  expect(within(main).getByRole('link', { name: /add new staff/i })).toHaveAttribute(
+  expect(within(main).getByRole('link', { name: /staff/i })).toHaveAttribute(
     'href',
     '/admin/staff/new',
   );

@@ -13,6 +13,7 @@ function jsonResponse(status, data) {
 afterEach(() => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 test('loads and displays active hike details', async () => {
@@ -47,7 +48,13 @@ test('loads and displays active hike details', async () => {
 });
 
 test('refreshes active hikes every minute', async () => {
-  vi.useFakeTimers();
+  let refreshHikes;
+  vi.spyOn(window, 'setInterval').mockImplementation((callback, delay) => {
+    if (delay === 60_000) refreshHikes = callback;
+    return 1;
+  });
+  vi.spyOn(window, 'clearInterval').mockImplementation(() => {});
+
   const firstHike = {
     id: 1,
     hiker: { firstName: 'Ada', lastName: 'Lovelace' },
@@ -69,13 +76,15 @@ test('refreshes active hikes every minute', async () => {
     await screen.findByRole('heading', { name: 'Ada Lovelace' }),
   ).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(1);
+  expect(refreshHikes).toEqual(expect.any(Function));
 
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(60_000);
+    refreshHikes();
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 
   expect(
-    await screen.findByRole('heading', { name: 'Grace Hopper' }),
+    screen.getByRole('heading', { name: 'Grace Hopper' }),
   ).toBeInTheDocument();
   expect(fetchMock).toHaveBeenCalledTimes(2);
 });
@@ -130,12 +139,14 @@ test('paginates two hikes at a time, filters by status and orders by expected re
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, hikes)));
   render(<ActiveHikes />);
 
+  expect(
+    await screen.findByRole('heading', { name: 'Casey Late' }),
+  ).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /due soon/i })).not.toBeInTheDocument();
   expect(
     screen.getByRole('group', { name: 'Filter hikes by return status' }),
   ).toBeInTheDocument();
   expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
-  expect(await screen.findByRole('heading', { name: 'Casey Late' })).toBeInTheDocument();
   expect(
     screen.getAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
   ).toEqual(['Casey Late', 'Blair Soon']);
