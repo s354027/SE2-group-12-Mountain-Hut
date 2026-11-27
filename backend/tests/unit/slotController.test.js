@@ -1,5 +1,8 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
+import { Op } from "sequelize";
 import { createSlotController } from "../../src/controllers/slotController.js";
+
+const NOT_ARCHIVED = { [Op.ne]: "ARCHIVED" };
 
 const { findAll, findByPk, create, findAllTables, bookingCount } = vi.hoisted(
   () => ({
@@ -60,6 +63,16 @@ describe("Slot Controller", () => {
     expect(findAll).toHaveBeenCalledTimes(1);
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.json).toHaveBeenCalledWith(mockSlots);
+  });
+
+  it("should include the active booking count and hide archived slots in getSlots (MH-96)", async () => {
+    await getSlots(mockReq(), mockRes());
+
+    const [[options]] = findAll.mock.calls;
+    expect(options.where).toEqual({ status: NOT_ARCHIVED });
+    expect(options.attributes.include).toEqual([
+      [expect.anything(), "activeBookingCount"],
+    ]);
   });
 
   it("should return 500 when an error occurs in getSlots", async () => {
@@ -863,7 +876,7 @@ describe("Slot Controller", () => {
 
     await createSlot(req, res);
 
-    expect(findAll).toHaveBeenCalledWith({where: { date: "2024-06-01" }});
+    expect(findAll).toHaveBeenCalledWith({ where: { date: "2024-06-01", status: NOT_ARCHIVED } });
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({error: "Slot overlaps with an existing slot"});
 
@@ -937,7 +950,7 @@ describe("Slot Controller", () => {
     await createSlot(req, res);
 
     expect(findAll).toHaveBeenCalledWith({
-      where: { date: "2024-06-02" },
+      where: { date: "2024-06-02", status: NOT_ARCHIVED },
     });
 
     expect(create).toHaveBeenCalled();
@@ -977,7 +990,7 @@ describe("Slot Controller", () => {
     await updateSlot(req, res);
 
     expect(findAll).toHaveBeenCalledWith({
-      where: { date: "2024-06-01" },
+      where: { date: "2024-06-01", status: NOT_ARCHIVED },
     });
 
     expect(res.status).toHaveBeenCalledWith(409);
@@ -1206,7 +1219,7 @@ describe("Slot Controller", () => {
 
     await updateSlot(req, res);
 
-    expect(findAll).toHaveBeenCalledWith({ where: { date: "2024-06-02" } });
+    expect(findAll).toHaveBeenCalledWith({ where: { date: "2024-06-02", status: NOT_ARCHIVED } });
     expect(res.status).toHaveBeenCalledWith(409);
     expect(slot.update).not.toHaveBeenCalled();
   });

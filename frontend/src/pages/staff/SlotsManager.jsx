@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../../api/client.js';
+import { useAuth } from '../../auth/AuthContext.jsx';
+import WeekCopyPanel from './WeekCopyPanel.jsx';
+import { addDays, dateKey, startOfWeek } from './weekDates.js';
 import './SlotsManager.css';
 
 
@@ -33,32 +36,13 @@ function validate(form) {
 
 const selectStyle = { width: '100%', padding: '10px 12px', border: '1px solid #d3d9df', borderRadius: 6, fontSize: '1rem', background: '#fff' };
 
-// Work with local calendar dates to avoid UTC shifting the displayed day.
-function dateKey(date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function startOfWeek(date) {
-  const monday = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  monday.setDate(monday.getDate() - ((monday.getDay() + 6) % 7));
-  return monday;
-}
-
-function addDays(date, amount) {
-  const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  result.setDate(result.getDate() + amount);
-  return result;
-}
-
 function readableDate(date) {
   return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
 
 export default function SlotsManager() {
+  const { user } = useAuth() ?? {};
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -349,6 +333,8 @@ export default function SlotsManager() {
           })}
         </div>
       )}
+
+      {user?.role === 'EMPLOYEE' && <WeekCopyPanel slots={slots} onCopied={loadSlots} />}
 
       <h3>{editingId === null ? 'Add a slot' : 'Edit the slot'}</h3>
       <form onSubmit={handleSubmit} noValidate>

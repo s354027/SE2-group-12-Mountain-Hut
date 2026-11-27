@@ -1,5 +1,10 @@
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import { findOverlappingSlot } from '../services/slotOverlap.js';
+import { ACTIVE_BOOKING_STATUSES, ARCHIVED_STATUS } from '../services/slotStatus.js';
+
+// Archived slots (MH-09) are no longer part of the schedule
+const NOT_ARCHIVED = { [Op.ne]: ARCHIVED_STATUS };
+const ACTIVE_STATUSES_SQL = ACTIVE_BOOKING_STATUSES.map((status) => `'${status}'`).join(', ');
 
 export function createSlotController({ Slot, DiningTable, Booking }) {
   /**
@@ -9,7 +14,7 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
    */
   async function getSlots(req, res) {
     const { date, meal } = req.query;
-    const where = {};
+    const where = { status: NOT_ARCHIVED };
 
     if (date) {
       where.date = date;
@@ -21,6 +26,14 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
     try {
       const slots = await Slot.findAll({
         where,
+        // MH-96: number of active bookings of each slot, so staff can see which
+        // weeks cannot be replaced by a weekly copy (same rule as scheduleCopyService)
+        attributes: {
+          include: [[
+            literal(`(SELECT COUNT(*) FROM bookings WHERE bookings.slotId = Slot.id AND bookings.status IN (${ACTIVE_STATUSES_SQL}))`),
+            'activeBookingCount'
+          ]]
+        },
         include: [
           {
             model: DiningTable,
@@ -96,7 +109,7 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
 
     try {
       const sameDaySlots = await Slot.findAll({ //find all the slots that share the same date with the new one
-        where: { date }
+        where: { date, status: NOT_ARCHIVED }
       });
 
       const overlapping = findOverlappingSlot(
@@ -216,7 +229,7 @@ export function createSlotController({ Slot, DiningTable, Booking }) {
       const finalStartTime = startTime ?? slot.startTime;
       const finalDuration = updateData.duration ?? slot.duration;
 
-      const sameDaySlots = await Slot.findAll({where: { date: finalDate }});
+      const sameDaySlots = await Slot.findAll({ where: { date: finalDate, status: NOT_ARCHIVED } });
 
       const overlapping = findOverlappingSlot(
         { startTime: finalStartTime, duration: finalDuration },
