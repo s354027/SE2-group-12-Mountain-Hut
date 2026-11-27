@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, it, expect, vi } from "vitest";
 import { createHikeController } from "../../src/controllers/hikeController.js";
 
-const { findAll, create } = vi.hoisted(() => ({
+const { findAll, create, findByPk, update } = vi.hoisted(() => ({
   findAll: vi.fn(),
   create: vi.fn(),
+  findByPk: vi.fn(),
+  update: vi.fn(),
 }));
 
 const mockRes = () => {
@@ -13,13 +15,14 @@ const mockRes = () => {
   return res;
 };
 
-const mockReq = ({ body = undefined, sessionUserId = 1 } = {}) => ({
+const mockReq = ({ body = undefined, params = {}, sessionUserId = 1 } = {}) => ({
   body,
+  params,
   session: { user: { id: sessionUserId } },
 });
 
-const { getActiveHikes, createHike, getMyHikes } = createHikeController({
-  Hike: { findAll, create },
+const { getActiveHikes, createHike, getMyHikes, closeHike } = createHikeController({
+  Hike: { findAll, create, findByPk, update },
   User: {},
 });
 
@@ -340,6 +343,87 @@ describe("Hike Controller", () => {
 
       expect(res.status).toHaveBeenCalledWith(500);
       expect(res.json).toHaveBeenCalledWith({ error: "Failed to retrieve hikes" });
+    });
+  });
+
+  describe("closeHike", () => {
+    function mockHike({ hikerId = 7, status = "ONGOING" } = {}) {
+      return { hikerId, status };
+    }
+
+    it("rejects a non-numeric id", async () => {
+      const req = mockReq({ params: { id: "abc" } });
+      const res = mockRes();
+
+      await closeHike(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({ error: "Invalid hike id" });
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("closes the hiker's own ongoing hike atomically", async () => {
+      const hike = mockHike({ hikerId: 7, status: "RETURNED" });
+      update.mockResolvedValue([1]);
+      findByPk.mockResolvedValue(hike);
+      const req = mockReq({ params: { id: "1" }, sessionUserId: 7 });
+      const res = mockRes();
+
+      await closeHike(req, res);
+
+      expect(update).toHaveBeenCalledWith(
+        { status: "RETURNED" },
+        { where: { id: 1, hikerId: 7, status: "ONGOING" } },
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(hike);
+    });
+
+    it("returns 404 when the hike doesn't exist", async () => {
+      update.mockResolvedValue([0]);
+      findByPk.mockResolvedValue(null);
+      const req = mockReq({ params: { id: "1" }, sessionUserId: 7 });
+      const res = mockRes();
+
+      await closeHike(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: "Hike not found" });
+    });
+
+    it("returns 404 when the hike belongs to another hiker", async () => {
+      update.mockResolvedValue([0]);
+      findByPk.mockResolvedValue(mockHike({ hikerId: 99 }));
+      const req = mockReq({ params: { id: "1" }, sessionUserId: 7 });
+      const res = mockRes();
+
+      await closeHike(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ error: "Hike not found" });
+    });
+
+    it("returns 409 when the hike is already closed", async () => {
+      update.mockResolvedValue([0]);
+      findByPk.mockResolvedValue(mockHike({ hikerId: 7, status: "RETURNED" }));
+      const req = mockReq({ params: { id: "1" }, sessionUserId: 7 });
+      const res = mockRes();
+
+      await closeHike(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({ error: "Hike is already closed" });
+    });
+
+    it("returns 500 when the query fails", async () => {
+      update.mockRejectedValue(new Error("db down"));
+      const req = mockReq({ params: { id: "1" } });
+      const res = mockRes();
+
+      await closeHike(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({ error: "Failed to close hike" });
     });
   });
 });

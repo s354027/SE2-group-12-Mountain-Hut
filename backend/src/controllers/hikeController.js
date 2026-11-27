@@ -114,5 +114,45 @@ export function createHikeController({ Hike, User }) {
     }
   }
 
-  return { getActiveHikes, createHike, getMyHikes };
+  /**
+   * PATCH /api/hikes/:id/close
+   * Marks the authenticated hiker's own hike as safely completed. Rejected
+   * if the hike belongs to another hiker, doesn't exist, or is already
+   * closed (MH-108/MH-22).
+   */
+  async function closeHike(req, res) {
+    const id = Number(req.params.id);
+    const hikerId = req.session.user.id;
+
+    if (!Number.isSafeInteger(id) || id < 1) {
+      return res.status(400).json({ error: 'Invalid hike id' });
+    }
+
+    try {
+      // Ownership, "not already closed" and the write happen in one atomic
+      // query, so two concurrent close requests can't both succeed (MH-108).
+      const [affectedCount] = await Hike.update(
+        { status: 'RETURNED' },
+        { where: { id, hikerId, status: 'ONGOING' } }
+      );
+
+      if (affectedCount > 0) {
+        const hike = await Hike.findByPk(id);
+        return res.status(200).json(hike);
+      }
+
+      const hike = await Hike.findByPk(id);
+
+      if (!hike || hike.hikerId !== hikerId) {
+        return res.status(404).json({ error: 'Hike not found' });
+      }
+
+      return res.status(409).json({ error: 'Hike is already closed' });
+    } catch (err) {
+      console.error('Error closing hike:', err);
+      return res.status(500).json({ error: 'Failed to close hike' });
+    }
+  }
+
+  return { getActiveHikes, createHike, getMyHikes, closeHike };
 }
