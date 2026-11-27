@@ -10,6 +10,7 @@ import { models, sequelize } from './db/index.js';
 import { createHikerRouter } from './routes/hiker.routes.js';
 import { createHikeRouter } from './routes/hike.routes.js';
 import bookingRouter from './routes/booking.routes.js';
+import menuRouter from './routes/menu.routes.js';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -60,6 +61,7 @@ app.use('/api/hikers', createHikerRouter({ User: models.User, sequelize }));
 app.use('/api/hikes', createHikeRouter({ Hike: models.Hike, User: models.User }));
 app.use('/api/slots', createSlotRouter(models));
 app.use('/api/tables', createTableRouter(models));
+app.use('/api/menus', menuRouter);
 
 if (process.env.SERVE_FRONTEND === 'true') {
     // React Router fallback:
