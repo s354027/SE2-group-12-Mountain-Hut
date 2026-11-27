@@ -43,7 +43,7 @@ test("employee sees the staff homepage and can manage slots", async ({ page }) =
 
     await expect(
         page.getByRole("heading", {
-            name: "Manage today’s slots and tables",
+            name: "Manage hut operations",
         }),
     ).toBeVisible();
 
@@ -69,7 +69,7 @@ test("warden sees the warden homepage and administration actions", async ({ page
 
     await expect(
         page.getByRole("heading", {
-            name: "Run the hut, from slots to staff",
+            name: "Monitor hut operations",
         }),
     ).toBeVisible();
 
